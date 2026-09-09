@@ -19,7 +19,7 @@ for SERVICE in \
     scanner-db \
     lab-db \
     backend-placeholder \
-    vulnerable-app-placeholder \
+    vulnerable-app \
     secure-app-placeholder
 do
     echo "$SERVICES" | grep -qx "$SERVICE" || {
@@ -33,7 +33,7 @@ for SERVICE in \
     scanner-db \
     lab-db \
     backend-placeholder \
-    vulnerable-app-placeholder \
+    vulnerable-app \
     secure-app-placeholder
 do
     CONTAINER_ID="$(docker compose -f "$COMPOSE_FILE" ps -q "$SERVICE")"

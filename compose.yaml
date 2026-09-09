@@ -74,10 +74,15 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-
-  vulnerable-app-placeholder:
-    image: nginx:1.27-alpine
-    container_name: sqli-vulnerable-app-placeholder
+  vulnerable-app:
+    build:
+      context: ./lab/app
+      dockerfile: Dockerfile
+    image: sqli-workshop-lab-app:local
+    container_name: sqli-vulnerable-app
+    environment:
+      APP_PORT: ${LAB_APP_PORT:-8081}
+      APP_MODE: vulnerable
     networks:
       - scanner_net
       - lab_net
@@ -91,7 +96,7 @@ services:
         - "-q"
         - "-O"
         - /dev/null
-        - http://localhost
+        - http://localhost:8081/health
       interval: 5s
       timeout: 3s
       retries: 10
@@ -99,7 +104,6 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-
   secure-app-placeholder:
     image: nginx:1.27-alpine
     container_name: sqli-secure-app-placeholder
