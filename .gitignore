@@ -1,0 +1,31 @@
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
+# Respaldo temporal de la migración
+legacy/
+
+# Datos locales
+scanner-data/
+lab-data/
+
+# Logs
+*.log
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Backend
+backend/main
+backend/bin/
+
+# Archivos temporales de Vim
+*.swp
+*.swo
+*~
