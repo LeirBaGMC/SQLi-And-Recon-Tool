@@ -17,7 +17,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+        - 'mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent'
       interval: 5s
       timeout: 5s
       retries: 20
@@ -42,11 +42,85 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+        - 'mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent'
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 20s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  backend-placeholder:
+    image: nginx:1.27-alpine
+    container_name: sqli-backend-placeholder
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:80"
+    networks:
+      - public_net
+      - scanner_net
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - "-q"
+        - "-O"
+        - /dev/null
+        - http://localhost
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  vulnerable-app-placeholder:
+    image: nginx:1.27-alpine
+    container_name: sqli-vulnerable-app-placeholder
+    networks:
+      - scanner_net
+      - lab_net
+    depends_on:
+      lab-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - "-q"
+        - "-O"
+        - /dev/null
+        - http://localhost
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  secure-app-placeholder:
+    image: nginx:1.27-alpine
+    container_name: sqli-secure-app-placeholder
+    networks:
+      - scanner_net
+      - lab_net
+    depends_on:
+      lab-db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - "-q"
+        - "-O"
+        - /dev/null
+        - http://localhost
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
