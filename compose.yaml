@@ -1,0 +1,74 @@
+name: sqli-workshop
+
+services:
+  scanner-db:
+    image: mysql:8.0
+    container_name: sqli-scanner-db
+    environment:
+      MYSQL_DATABASE: ${SCANNER_DB_NAME}
+      MYSQL_USER: ${SCANNER_DB_USER}
+      MYSQL_PASSWORD: ${SCANNER_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${SCANNER_DB_ROOT_PASSWORD}
+    volumes:
+      - scanner_db_data:/var/lib/mysql
+      - ./infrastructure/mysql/scanner/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - scanner_net
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  lab-db:
+    image: mysql:8.0
+    container_name: sqli-lab-db
+    environment:
+      MYSQL_DATABASE: ${LAB_DB_NAME}
+      MYSQL_USER: ${LAB_DB_USER}
+      MYSQL_PASSWORD: ${LAB_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${LAB_DB_ROOT_PASSWORD}
+    volumes:
+      - lab_db_data:/var/lib/mysql
+      - ./infrastructure/mysql/lab/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - lab_net
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  public_net:
+    name: sqli-public-net
+    driver: bridge
+
+  scanner_net:
+    name: sqli-scanner-net
+    driver: bridge
+    internal: true
+
+  lab_net:
+    name: sqli-lab-net
+    driver: bridge
+    internal: true
+
+volumes:
+  scanner_db_data:
+    name: sqli-scanner-db-data
+
+  lab_db_data:
+    name: sqli-lab-db-data
