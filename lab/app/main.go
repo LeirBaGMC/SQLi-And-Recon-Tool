@@ -10,6 +10,7 @@ import (
 	"time"
 
 	labdatabase "github.com/LeirBaGMC/SQLi-And-Recon-Tool/lab/app/internal/database"
+	"github.com/LeirBaGMC/SQLi-And-Recon-Tool/lab/app/internal/handlers"
 )
 
 type Application struct {
@@ -40,9 +41,12 @@ func main() {
 		mode:     mode,
 	}
 
+	productsHandler := handlers.NewProductsHandler(db)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", app.homeHandler)
 	mux.HandleFunc("GET /health", app.healthHandler)
+	mux.HandleFunc("GET /api/products", productsHandler.List)
 
 	server := &http.Server{
 		Addr:              ":" + port,
