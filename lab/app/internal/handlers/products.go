@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -25,13 +26,23 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
+type ProductResponse struct {
+	Product       Product           `json:"product"`
+	QueryTemplate string            `json:"query_template"`
+	Parameters    map[string]uint64 `json:"parameters"`
+	SecurityMode  string            `json:"security_mode"`
+}
+
 func NewProductsHandler(database *sql.DB) *ProductsHandler {
 	return &ProductsHandler{
 		database: database,
 	}
 }
 
-func (handler *ProductsHandler) List(w http.ResponseWriter, r *http.Request) {
+func (handler *ProductsHandler) List(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 
@@ -95,6 +106,89 @@ func (handler *ProductsHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, products)
+}
+
+func (handler *ProductsHandler) GetSecureByID(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	idText := r.PathValue("id")
+
+	productID, err := strconv.ParseUint(idText, 10, 64)
+	if err != nil || productID == 0 {
+		writeJSON(w, http.StatusBadRequest, ErrorResponse{
+			Error: "El identificador debe ser un entero positivo",
+		})
+
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	const query = `
+		SELECT
+			id,
+			name,
+			description,
+			price,
+			is_active
+		FROM products
+		WHERE id = ?
+		AND is_active = TRUE
+	`
+
+	var product Product
+
+	err = handler.database.QueryRowContext(
+		ctx,
+		query,
+		productID,
+	).Scan(
+		&product.ID,
+		&product.Name,
+		&product.Description,
+		&product.Price,
+		&product.IsActive,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			writeJSON(w, http.StatusNotFound, ErrorResponse{
+				Error: "Producto no encontrado",
+			})
+
+			return
+		}
+
+		log.Printf(
+			"No se pudo consultar el producto %d: %v",
+			productID,
+			err,
+		)
+
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{
+			Error: "No se pudo obtener el producto",
+		})
+
+		return
+	}
+
+	response := ProductResponse{
+		Product: product,
+		QueryTemplate: `
+SELECT id, name, description, price, is_active
+FROM products
+WHERE id = ?
+AND is_active = TRUE
+		`,
+		Parameters: map[string]uint64{
+			"id": productID,
+		},
+		SecurityMode: "prepared_statement",
+	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {

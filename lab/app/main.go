@@ -47,6 +47,10 @@ func main() {
 	mux.HandleFunc("GET /", app.homeHandler)
 	mux.HandleFunc("GET /health", app.healthHandler)
 	mux.HandleFunc("GET /api/products", productsHandler.List)
+	mux.HandleFunc(
+		"GET /api/secure/products/{id}",
+		productsHandler.GetSecureByID,
+	)
 
 	server := &http.Server{
 		Addr:              ":" + port,
