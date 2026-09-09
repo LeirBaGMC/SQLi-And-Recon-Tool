@@ -20,7 +20,7 @@ for SERVICE in \
     lab-db \
     backend-placeholder \
     vulnerable-app \
-    secure-app-placeholder
+    secure-app
 do
     echo "$SERVICES" | grep -qx "$SERVICE" || {
         echo "ERROR: No se encontro el servicio $SERVICE"
@@ -34,7 +34,7 @@ for SERVICE in \
     lab-db \
     backend-placeholder \
     vulnerable-app \
-    secure-app-placeholder
+    secure-app
 do
     CONTAINER_ID="$(docker compose -f "$COMPOSE_FILE" ps -q "$SERVICE")"
 
