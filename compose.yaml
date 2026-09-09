@@ -83,6 +83,11 @@ services:
     environment:
       APP_PORT: ${LAB_APP_PORT:-8081}
       APP_MODE: vulnerable
+      DB_HOST: ${LAB_DB_HOST}
+      DB_PORT: ${LAB_DB_PORT}
+      DB_NAME: ${LAB_DB_NAME}
+      DB_USER: ${LAB_DB_USER}
+      DB_PASSWORD: ${LAB_DB_PASSWORD}
     networks:
       - scanner_net
       - lab_net
