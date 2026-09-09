@@ -43,6 +43,11 @@ func main() {
 
 	productsHandler := handlers.NewProductsHandler(db)
 
+	vulnerableProductsHandler := handlers.NewVulnerableProductsHandler(
+		db,
+		mode,
+	)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", app.homeHandler)
 	mux.HandleFunc("GET /health", app.healthHandler)
@@ -50,6 +55,11 @@ func main() {
 	mux.HandleFunc(
 		"GET /api/secure/products/{id}",
 		productsHandler.GetSecureByID,
+	)
+
+	mux.HandleFunc(
+		"GET /api/vulnerable/products",
+		vulnerableProductsHandler.GetByID,
 	)
 
 	server := &http.Server{
