@@ -27,10 +27,13 @@ type ErrorResponse struct {
 }
 
 type ProductResponse struct {
-	Product       Product           `json:"product"`
-	QueryTemplate string            `json:"query_template"`
-	Parameters    map[string]uint64 `json:"parameters"`
-	SecurityMode  string            `json:"security_mode"`
+	Product        Product           `json:"product"`
+	ReceivedInput  string            `json:"received_input"`
+	QueryTemplate  string            `json:"query_template"`
+	Parameters     map[string]uint64 `json:"parameters"`
+	SecurityMode   string            `json:"security_mode"`
+	Risk           string            `json:"risk"`
+	Recommendation string            `json:"recommendation"`
 }
 
 func NewProductsHandler(database *sql.DB) *ProductsHandler {
@@ -175,7 +178,8 @@ func (handler *ProductsHandler) GetSecureByID(
 	}
 
 	response := ProductResponse{
-		Product: product,
+		Product:       product,
+		ReceivedInput: idText,
 		QueryTemplate: `
 SELECT id, name, description, price, is_active
 FROM products
@@ -185,7 +189,9 @@ AND is_active = TRUE
 		Parameters: map[string]uint64{
 			"id": productID,
 		},
-		SecurityMode: "prepared_statement",
+		SecurityMode:   "prepared_statement",
+		Risk:           "La entrada no modifica la estructura de la consulta SQL",
+		Recommendation: "Mantener consultas preparadas y validar los datos de entrada",
 	}
 
 	writeJSON(w, http.StatusOK, response)
