@@ -1,4 +1,3 @@
-// backend/main.go
 package main
 
 import (
@@ -10,23 +9,43 @@ import (
 )
 
 func main() {
-	// 1. Conectar a la base de datos
-	database.Connect()
-	defer database.DB.Close()
+	if err := database.Connect(); err != nil {
+		log.Fatalf(
+			"No se pudo iniciar el backend: %v",
+			err,
+		)
+	}
 
-	// 2. Crear las tablas
-	database.CreateTables()
+	defer func() {
+		if err := database.Close(); err != nil {
+			log.Printf(
+				"No se pudo cerrar scanner-db correctamente: %v",
+				err,
+			)
+		}
+	}()
 
-	// 3. Configurar el router de la API
 	router := gin.Default()
+	router.GET("/health", api.HealthHandler)
+
 	apiGroup := router.Group("/api")
 	{
 		apiGroup.POST("/scans", api.StartScanHandler)
 		apiGroup.GET("/scans/:id", api.GetScanStatusHandler)
-		apiGroup.GET("/scans/:id/results", api.GetScanResultsHandler)
+		apiGroup.GET(
+			"/scans/:id/results",
+			api.GetScanResultsHandler,
+		)
 	}
 
-	// 4. Iniciar el servidor
-	log.Println("Iniciando el servidor en el puerto 8080...")
-	router.Run(":8080")
+	log.Println(
+		"Iniciando el backend del escaner en el puerto 8080",
+	)
+
+	if err := router.Run(":8080"); err != nil {
+		log.Fatalf(
+			"No se pudo iniciar el servidor HTTP: %v",
+			err,
+		)
+	}
 }

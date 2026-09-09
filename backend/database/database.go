@@ -1,64 +1,131 @@
 package database
 
-
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql" 
+	_ "github.com/go-sql-driver/mysql"
 )
 
-// DB es la conexión a la base de datos que será accesible por otros paquetes
+const (
+	connectionAttempts = 10
+	retryDelay         = 3 * time.Second
+	pingTimeout        = 3 * time.Second
+)
+
 var DB *sql.DB
 
+func Connect() error {
+	host := getEnvironment("SCANNER_DB_HOST", "scanner-db")
+	port := getEnvironment("SCANNER_DB_PORT", "3306")
+	name := getEnvironment("SCANNER_DB_NAME", "scanner_db")
+	user := getEnvironment("SCANNER_DB_USER", "scanner_user")
+	password := os.Getenv("SCANNER_DB_PASSWORD")
 
-func Connect() {
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-	host := os.Getenv("DB_HOST")
+	if password == "" {
+		return fmt.Errorf(
+			"la variable SCANNER_DB_PASSWORD es obligatoria",
+		)
+	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:3306)/%s?parseTime=true", user, password, host, dbname)
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4",
+		user,
+		password,
+		host,
+		port,
+		name,
+	)
 
-	var err error
-	DB, err = sql.Open("mysql", dsn)
+	databaseConnection, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatalf("Error fatal al configurar la conexión a la DB: %v", err)
+		return fmt.Errorf(
+			"no se pudo configurar la conexion con scanner-db: %w",
+			err,
+		)
 	}
 
-	for i := 0; i < 10; i++ {
-		err = DB.Ping()
+	databaseConnection.SetMaxOpenConns(10)
+	databaseConnection.SetMaxIdleConns(5)
+	databaseConnection.SetConnMaxLifetime(5 * time.Minute)
+	databaseConnection.SetConnMaxIdleTime(2 * time.Minute)
+
+	for attempt := 1; attempt <= connectionAttempts; attempt++ {
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			pingTimeout,
+		)
+
+		err = databaseConnection.PingContext(ctx)
+		cancel()
+
 		if err == nil {
-			log.Println("Conexión a la base de datos exitosa.")
-			return
+			DB = databaseConnection
+
+			log.Printf(
+				"Conexion con scanner-db establecida en el intento %d",
+				attempt,
+			)
+
+			return nil
 		}
-		log.Println("Esperando a la base de datos...")
-		time.Sleep(3 * time.Second)
+
+		log.Printf(
+			"scanner-db no disponible, intento %d de %d: %v",
+			attempt,
+			connectionAttempts,
+			err,
+		)
+
+		if attempt < connectionAttempts {
+			time.Sleep(retryDelay)
+		}
 	}
-	log.Fatalf("No se pudo conectar a la base de datos después de varios intentos: %v", err)
+
+	databaseConnection.Close()
+
+	return fmt.Errorf(
+		"no se pudo conectar con scanner-db despues de %d intentos: %w",
+		connectionAttempts,
+		err,
+	)
 }
 
-
-func CreateTables() {
-	scansTable := `
-    CREATE TABLE IF NOT EXISTS scans (
-        id VARCHAR(36) PRIMARY KEY, url TEXT NOT NULL, status VARCHAR(20) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );`
-	vulnerabilitiesTable := `
-    CREATE TABLE IF NOT EXISTS vulnerabilities (
-        id INT AUTO_INCREMENT PRIMARY KEY, scan_id VARCHAR(36), url TEXT,
-        type VARCHAR(50), payload TEXT, FOREIGN KEY (scan_id) REFERENCES scans(id)
-    );`
-
-	if _, err := DB.Exec(scansTable); err != nil {
-		log.Fatalf("Error al crear la tabla 'scans': %v", err)
+func Ping(ctx context.Context) error {
+	if DB == nil {
+		return fmt.Errorf(
+			"la conexion con scanner-db no fue inicializada",
+		)
 	}
-	if _, err := DB.Exec(vulnerabilitiesTable); err != nil {
-		log.Fatalf("Error al crear la tabla 'vulnerabilities': %v", err)
+
+	if err := DB.PingContext(ctx); err != nil {
+		return fmt.Errorf(
+			"scanner-db no responde: %w",
+			err,
+		)
 	}
-	log.Println("Tablas de la base de datos verificadas/creadas exitosamente.")
+
+	return nil
+}
+
+func Close() error {
+	if DB == nil {
+		return nil
+	}
+
+	return DB.Close()
+}
+
+func getEnvironment(name string, fallback string) string {
+	value := os.Getenv(name)
+
+	if value == "" {
+		return fallback
+	}
+
+	return value
 }
