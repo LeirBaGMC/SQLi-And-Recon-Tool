@@ -1,15 +1,29 @@
-
 FROM golang:1.25-alpine AS builder
-WORKDIR /app
 
+WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
+
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w" \
+    -o /out/scanner-backend \
+    .
 
-FROM scratch
-WORKDIR /root/
-COPY --from=builder /app/main .
-CMD ["./main"]
+FROM alpine:3.22
+
+RUN addgroup -S scanner \
+    && adduser -S -G scanner scanner
+
+WORKDIR /app
+
+COPY --from=builder /out/scanner-backend /app/scanner-backend
+
+USER scanner
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/scanner-backend"]
