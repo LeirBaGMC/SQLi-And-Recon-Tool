@@ -14,12 +14,19 @@ import (
 	"github.com/LeirBaGMC/sql-scanner/database"
 )
 
-const responseLimit = 1048576
+const (
+	responseLimit      = 1048576
+	requestTimeout     = 10 * time.Second
+	sandboxMode        = "sandbox"
+	authorizedURLMode  = "authorized_url"
+	externalProbeValue = "2 AND 1=2"
+)
 
 type requestResult struct {
 	StatusCode int
 	DurationMS uint64
 	Body       string
+	FinalURL   string
 }
 
 type vulnerableResponse struct {
@@ -29,48 +36,48 @@ type vulnerableResponse struct {
 	Risk          string `json:"risk"`
 }
 
-func RunScan(scanID string, targetURL string) {
+func RunScan(
+	scanID string,
+	targetURL string,
+	parameterName string,
+	targetMode string,
+) {
 	log.Printf(
-		"Iniciando escaneo %s para el objetivo %s",
+		"Iniciando escaneo %s para %s en modo %s",
 		scanID,
 		targetURL,
+		targetMode,
 	)
 
-	if err := updateScanStatus(
+	err := updateScanStatus(
 		scanID,
 		"RUNNING",
 		"",
 		true,
 		false,
-	); err != nil {
+	)
+	if err != nil {
 		log.Printf(
-			"No se pudo iniciar el escaneo %s: %v",
-			scanID,
+			"No se pudo actualizar el estado inicial: %v",
 			err,
 		)
 		return
 	}
 
-	if err := createScanEvent(
+	createEventWithoutInterrupting(
 		scanID,
 		"SCAN_STARTED",
-		"El motor de escaneo inicio el analisis",
-	); err != nil {
-		log.Printf(
-			"No se pudo registrar el evento inicial: %v",
-			err,
-		)
-	}
+		"El motor inicio el analisis controlado",
+	)
 
 	client := http.Client{
-		Timeout: time.Duration(10_000_000_000),
+		Timeout: requestTimeout,
 	}
 
 	baseline, err := performRequest(
 		client,
 		targetURL,
 	)
-
 	if err != nil {
 		failScan(
 			scanID,
@@ -82,7 +89,7 @@ func RunScan(scanID string, targetURL string) {
 		return
 	}
 
-	if err := createScanEvent(
+	createEventWithoutInterrupting(
 		scanID,
 		"BASELINE_COMPLETED",
 		fmt.Sprintf(
@@ -90,50 +97,86 @@ func RunScan(scanID string, targetURL string) {
 			baseline.DurationMS,
 			baseline.StatusCode,
 		),
-	); err != nil {
-		log.Printf(
-			"No se pudo registrar la respuesta base: %v",
-			err,
+	)
+
+	switch targetMode {
+	case authorizedURLMode:
+		err = scanAuthorizedURL(
+			client,
+			scanID,
+			targetURL,
+			parameterName,
+			baseline,
+		)
+
+	default:
+		err = scanSandbox(
+			client,
+			scanID,
+			targetURL,
+			parameterName,
+			baseline,
 		)
 	}
 
-	parsedTarget, err := url.Parse(targetURL)
 	if err != nil {
-		failScan(
+		failScan(scanID, err.Error())
+		return
+	}
+
+	err = updateScanStatus(
+		scanID,
+		"COMPLETED",
+		"",
+		false,
+		true,
+	)
+	if err != nil {
+		log.Printf(
+			"No se pudo completar el escaneo %s: %v",
 			scanID,
-			"El objetivo autorizado contiene una URL invalida",
+			err,
 		)
 		return
 	}
 
-	parameterName := "id"
-	queryValues := parsedTarget.Query()
+	createEventWithoutInterrupting(
+		scanID,
+		"SCAN_COMPLETED",
+		"El motor finalizo el escaneo correctamente",
+	)
 
-	if queryValues.Has(parameterName) {
-		queryValues.Set(
-			parameterName,
-			"1 OR 1=1",
-		)
+	log.Printf(
+		"Escaneo %s completado",
+		scanID,
+	)
+}
 
-		parsedTarget.RawQuery = queryValues.Encode()
+func scanSandbox(
+	client http.Client,
+	scanID string,
+	targetURL string,
+	parameterName string,
+	baseline requestResult,
+) error {
+	testedURL, err := replaceQueryValue(
+		targetURL,
+		parameterName,
+		"1 OR 1=1",
+	)
+	if err != nil {
+		return err
 	}
-
-	testedURL := parsedTarget.String()
 
 	probe, err := performRequest(
 		client,
 		testedURL,
 	)
-
 	if err != nil {
-		failScan(
-			scanID,
-			fmt.Sprintf(
-				"No se pudo completar la prueba controlada: %v",
-				err,
-			),
+		return fmt.Errorf(
+			"no se pudo completar la prueba del sandbox: %w",
+			err,
 		)
-		return
 	}
 
 	baselineProducts := strings.Count(
@@ -146,105 +189,204 @@ func RunScan(scanID string, targetURL string) {
 		`"id":`,
 	)
 
-	var responseMetadata vulnerableResponse
+	var metadata vulnerableResponse
 
 	metadataAvailable := json.Unmarshal(
 		[]byte(probe.Body),
-		&responseMetadata,
+		&metadata,
 	) == nil
 
-	isUnsafeMode := metadataAvailable &&
-		responseMetadata.SecurityMode == "unsafe_concatenation"
+	unsafeMode := metadataAvailable &&
+		metadata.SecurityMode == "unsafe_concatenation"
 
 	resultExpanded := probeProducts > baselineProducts
 
-	if isUnsafeMode || resultExpanded {
-		evidence := fmt.Sprintf(
-			"Modo=%s; entrada=%s; resultados_base=%d; resultados_prueba=%d; consulta=%s",
-			responseMetadata.SecurityMode,
-			responseMetadata.ReceivedInput,
-			baselineProducts,
-			probeProducts,
-			responseMetadata.ExecutedQuery,
+	if !unsafeMode && !resultExpanded {
+		createEventWithoutInterrupting(
+			scanID,
+			"NO_FINDING",
+			"La prueba del sandbox no modifico el resultado esperado",
 		)
 
+		return nil
+	}
+
+	evidence := fmt.Sprintf(
+		"Modo=%s; entrada=%s; resultados_base=%d; resultados_prueba=%d; consulta=%s",
+		metadata.SecurityMode,
+		metadata.ReceivedInput,
+		baselineProducts,
+		probeProducts,
+		metadata.ExecutedQuery,
+	)
+
+	err = createFinding(
+		scanID,
+		"SQL_INJECTION",
+		"HIGH",
+		"HIGH",
+		testedURL,
+		parameterName,
+		evidence,
+		baseline.DurationMS,
+		probe.DurationMS,
+		probe.StatusCode,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"no se pudo guardar el hallazgo: %w",
+			err,
+		)
+	}
+
+	createEventWithoutInterrupting(
+		scanID,
+		"FINDING_CREATED",
+		"Se detecto concatenacion insegura en el sandbox",
+	)
+
+	return nil
+}
+
+func scanAuthorizedURL(
+	client http.Client,
+	scanID string,
+	targetURL string,
+	parameterName string,
+	baseline requestResult,
+) error {
+	falseConditionURL, err := replaceQueryValue(
+		targetURL,
+		parameterName,
+		externalProbeValue,
+	)
+	if err != nil {
+		return err
+	}
+
+	probe, err := performRequest(
+		client,
+		falseConditionURL,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"no se pudo completar la prueba externa: %w",
+			err,
+		)
+	}
+
+	if !sameHostname(targetURL, probe.FinalURL) {
+		return fmt.Errorf(
+			"el objetivo redirigio hacia un dominio diferente",
+		)
+	}
+
+	errorSignature := detectSQLSignature(probe.Body)
+
+	baselineLength := len(baseline.Body)
+	probeLength := len(probe.Body)
+
+	lengthDifference := absoluteDifference(
+		baselineLength,
+		probeLength,
+	)
+
+	differencePercentage := calculatePercentage(
+		lengthDifference,
+		baselineLength,
+	)
+
+	statusChanged := baseline.StatusCode != probe.StatusCode
+	contentChanged := differencePercentage >= 20
+
+	evidence := fmt.Sprintf(
+		"Respuesta normal: HTTP %d, %d bytes, %d ms. Respuesta de prueba: HTTP %d, %d bytes, %d ms. Diferencia de contenido: %d por ciento. Firma SQL: %s",
+		baseline.StatusCode,
+		baselineLength,
+		baseline.DurationMS,
+		probe.StatusCode,
+		probeLength,
+		probe.DurationMS,
+		differencePercentage,
+		errorSignature,
+	)
+
+	if errorSignature != "" {
 		err = createFinding(
 			scanID,
-			"SQL_INJECTION",
+			"POSSIBLE_SQL_INJECTION_ERROR",
 			"HIGH",
 			"HIGH",
-			testedURL,
+			falseConditionURL,
 			parameterName,
 			evidence,
 			baseline.DurationMS,
 			probe.DurationMS,
 			probe.StatusCode,
 		)
-
 		if err != nil {
-			failScan(
-				scanID,
-				fmt.Sprintf(
-					"No se pudo guardar el hallazgo: %v",
-					err,
-				),
+			return fmt.Errorf(
+				"no se pudo guardar el hallazgo externo: %w",
+				err,
 			)
-			return
 		}
 
-		if err := createScanEvent(
+		createEventWithoutInterrupting(
 			scanID,
 			"FINDING_CREATED",
-			"Se detecto concatenacion insegura de entrada en una consulta SQL",
-		); err != nil {
-			log.Printf(
-				"No se pudo registrar el hallazgo como evento: %v",
+			"La respuesta externa contiene una firma de error SQL",
+		)
+
+		return nil
+	}
+
+	if statusChanged || contentChanged {
+		err = createFinding(
+			scanID,
+			"POSSIBLE_SQL_INJECTION_DIFFERENTIAL",
+			"MEDIUM",
+			"MEDIUM",
+			falseConditionURL,
+			parameterName,
+			evidence,
+			baseline.DurationMS,
+			probe.DurationMS,
+			probe.StatusCode,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"no se pudo guardar el hallazgo diferencial: %w",
 				err,
 			)
 		}
-	} else {
-		if err := createScanEvent(
+
+		createEventWithoutInterrupting(
 			scanID,
-			"NO_FINDING",
-			"La prueba controlada no modifico la estructura ni el resultado esperado",
-		); err != nil {
-			log.Printf(
-				"No se pudo registrar el resultado sin hallazgos: %v",
-				err,
-			)
-		}
-	}
-
-	if err := updateScanStatus(
-		scanID,
-		"COMPLETED",
-		"",
-		false,
-		true,
-	); err != nil {
-		log.Printf(
-			"No se pudo completar el escaneo %s: %v",
-			scanID,
-			err,
+			"FINDING_CREATED",
+			"La entrada produjo una diferencia significativa en la respuesta",
 		)
-		return
+
+		return nil
 	}
 
-	if err := createScanEvent(
-		scanID,
-		"SCAN_COMPLETED",
-		"El motor finalizo el escaneo correctamente",
-	); err != nil {
-		log.Printf(
-			"No se pudo registrar el evento final: %v",
-			err,
-		)
-	}
-
-	log.Printf(
-		"Escaneo %s completado",
-		scanID,
+	observation := fmt.Sprintf(
+		"Resultado inconcluso. Respuesta normal: HTTP %d, %d bytes, %d ms. Respuesta de prueba: HTTP %d, %d bytes, %d ms. Diferencia de contenido: %d por ciento. No se encontraron firmas de error SQL.",
+		baseline.StatusCode,
+		baselineLength,
+		baseline.DurationMS,
+		probe.StatusCode,
+		probeLength,
+		probe.DurationMS,
+		differencePercentage,
 	)
+
+	createEventWithoutInterrupting(
+		scanID,
+		"SCAN_INCONCLUSIVE",
+		observation,
+	)
+
+	return nil
 }
 
 func performRequest(
@@ -253,7 +395,7 @@ func performRequest(
 ) (requestResult, error) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		time.Duration(10_000_000_000),
+		requestTimeout,
 	)
 	defer cancel()
 
@@ -263,7 +405,6 @@ func performRequest(
 		targetURL,
 		nil,
 	)
-
 	if err != nil {
 		return requestResult{}, err
 	}
@@ -281,24 +422,126 @@ func performRequest(
 	}
 	defer response.Body.Close()
 
-	duration := time.Since(startedAt)
-
 	bodyBytes, err := io.ReadAll(
 		io.LimitReader(
 			response.Body,
 			responseLimit,
 		),
 	)
-
 	if err != nil {
 		return requestResult{}, err
 	}
 
 	return requestResult{
 		StatusCode: response.StatusCode,
-		DurationMS: uint64(duration.Milliseconds()),
-		Body:       string(bodyBytes),
+		DurationMS: uint64(
+			time.Since(startedAt).Milliseconds(),
+		),
+		Body:     string(bodyBytes),
+		FinalURL: response.Request.URL.String(),
 	}, nil
+}
+
+func replaceQueryValue(
+	rawURL string,
+	parameterName string,
+	newValue string,
+) (string, error) {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf(
+			"no se pudo interpretar la URL: %w",
+			err,
+		)
+	}
+
+	queryValues := parsedURL.Query()
+
+	if !queryValues.Has(parameterName) {
+		return "", fmt.Errorf(
+			"la URL no contiene el parametro seleccionado",
+		)
+	}
+
+	queryValues.Set(
+		parameterName,
+		newValue,
+	)
+
+	parsedURL.RawQuery = queryValues.Encode()
+
+	return parsedURL.String(), nil
+}
+
+func sameHostname(
+	originalURL string,
+	finalURL string,
+) bool {
+	original, err := url.Parse(originalURL)
+	if err != nil {
+		return false
+	}
+
+	final, err := url.Parse(finalURL)
+	if err != nil {
+		return false
+	}
+
+	return strings.EqualFold(
+		original.Hostname(),
+		final.Hostname(),
+	)
+}
+
+func detectSQLSignature(body string) string {
+	normalizedBody := strings.ToLower(body)
+
+	signatures := []string{
+		"sql syntax",
+		"syntax error",
+		"unclosed quotation mark",
+		"mysql",
+		"mysqli",
+		"odbc sql",
+		"sql server",
+		"ora-",
+		"postgresql",
+		"sqlite error",
+		"database error",
+	}
+
+	for _, signature := range signatures {
+		if strings.Contains(
+			normalizedBody,
+			signature,
+		) {
+			return signature
+		}
+	}
+
+	return ""
+}
+
+func absoluteDifference(
+	firstValue int,
+	secondValue int,
+) int {
+	if firstValue >= secondValue {
+		return firstValue - secondValue
+	}
+
+	return secondValue - firstValue
+}
+
+func calculatePercentage(
+	difference int,
+	baseline int,
+) int {
+	if baseline <= 0 {
+		return 0
+	}
+
+	return difference * 100 / baseline
 }
 
 func createFinding(
@@ -370,6 +613,25 @@ func createScanEvent(
 	return err
 }
 
+func createEventWithoutInterrupting(
+	scanID string,
+	eventType string,
+	message string,
+) {
+	err := createScanEvent(
+		scanID,
+		eventType,
+		message,
+	)
+	if err != nil {
+		log.Printf(
+			"No se pudo registrar el evento %s: %v",
+			eventType,
+			err,
+		)
+	}
+}
+
 func updateScanStatus(
 	scanID string,
 	status string,
@@ -377,11 +639,9 @@ func updateScanStatus(
 	setStartedAt bool,
 	setCompletedAt bool,
 ) error {
-	var query string
-
 	switch {
 	case setStartedAt:
-		query = `
+		const query = `
 			UPDATE scans
 			SET
 				status = ?,
@@ -399,7 +659,7 @@ func updateScanStatus(
 		return err
 
 	case setCompletedAt:
-		query = `
+		const query = `
 			UPDATE scans
 			SET
 				status = ?,
@@ -417,7 +677,7 @@ func updateScanStatus(
 		return err
 
 	default:
-		query = `
+		const query = `
 			UPDATE scans
 			SET
 				status = ?,
@@ -455,26 +715,22 @@ func failScan(
 		WHERE id = ?
 	`
 
-	if _, err := database.DB.Exec(
+	_, err := database.DB.Exec(
 		query,
 		"FAILED",
 		message,
 		scanID,
-	); err != nil {
+	)
+	if err != nil {
 		log.Printf(
 			"No se pudo marcar el escaneo como fallido: %v",
 			err,
 		)
 	}
 
-	if err := createScanEvent(
+	createEventWithoutInterrupting(
 		scanID,
 		"SCAN_FAILED",
 		message,
-	); err != nil {
-		log.Printf(
-			"No se pudo registrar el evento de fallo: %v",
-			err,
-		)
-	}
+	)
 }

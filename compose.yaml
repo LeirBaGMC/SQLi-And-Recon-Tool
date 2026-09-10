@@ -4,16 +4,20 @@ services:
   scanner-db:
     image: mysql:8.0
     container_name: sqli-scanner-db
+
     environment:
       MYSQL_DATABASE: ${SCANNER_DB_NAME}
       MYSQL_USER: ${SCANNER_DB_USER}
       MYSQL_PASSWORD: ${SCANNER_DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${SCANNER_DB_ROOT_PASSWORD}
+
     volumes:
       - scanner_db_data:/var/lib/mysql
       - ./infrastructure/mysql/scanner/init:/docker-entrypoint-initdb.d:ro
+
     networks:
       - scanner_net
+
     healthcheck:
       test:
         - CMD-SHELL
@@ -22,23 +26,29 @@ services:
       timeout: 5s
       retries: 20
       start_period: 20s
+
     restart: unless-stopped
+
     security_opt:
       - no-new-privileges:true
 
   lab-db:
     image: mysql:8.0
     container_name: sqli-lab-db
+
     environment:
       MYSQL_DATABASE: ${LAB_DB_NAME}
       MYSQL_USER: ${LAB_DB_USER}
       MYSQL_PASSWORD: ${LAB_DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${LAB_DB_ROOT_PASSWORD}
+
     volumes:
       - lab_db_data:/var/lib/mysql
       - ./infrastructure/mysql/lab/init:/docker-entrypoint-initdb.d:ro
+
     networks:
       - lab_net
+
     healthcheck:
       test:
         - CMD-SHELL
@@ -47,56 +57,20 @@ services:
       timeout: 5s
       retries: 20
       start_period: 20s
+
     restart: unless-stopped
+
     security_opt:
       - no-new-privileges:true
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    image: sqli-workshop-backend:local
-    container_name: sqli-backend
-    environment:
-      SCANNER_DB_HOST: ${SCANNER_DB_HOST}
-      SCANNER_DB_PORT: ${SCANNER_DB_PORT}
-      SCANNER_DB_NAME: ${SCANNER_DB_NAME}
-      SCANNER_DB_USER: ${SCANNER_DB_USER}
-      SCANNER_DB_PASSWORD: ${SCANNER_DB_PASSWORD}
-      GIN_MODE: ${GIN_MODE:-release}
-    ports:
-      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
-    networks:
-      - public_net
-      - scanner_net
-    depends_on:
-      scanner-db:
-        condition: service_healthy
-      vulnerable-app:
-        condition: service_healthy
-      secure-app:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - wget
-        - "-q"
-        - "-O"
-        - /dev/null
-        - http://localhost:8080/health
-      interval: 5s
-      timeout: 3s
-      retries: 15
-      start_period: 15s
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
   vulnerable-app:
     build:
       context: ./lab/app
       dockerfile: Dockerfile
+
     image: sqli-workshop-lab-app:local
     container_name: sqli-vulnerable-app
+
     environment:
       APP_PORT: ${LAB_APP_PORT:-8081}
       APP_MODE: vulnerable
@@ -105,47 +79,15 @@ services:
       DB_NAME: ${LAB_DB_NAME}
       DB_USER: ${LAB_DB_USER}
       DB_PASSWORD: ${LAB_DB_PASSWORD}
+
     networks:
       - scanner_net
       - lab_net
+
     depends_on:
       lab-db:
         condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - wget
-        - "-q"
-        - "-O"
-        - /dev/null
-        - http://localhost:8081/health
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-  secure-app:
-    build:
-      context: ./lab/app
-      dockerfile: Dockerfile
-    image: sqli-workshop-lab-app:local
-    container_name: sqli-secure-app
-    environment:
-      APP_PORT: ${LAB_APP_PORT:-8081}
-      APP_MODE: secure
-      DB_HOST: ${LAB_DB_HOST}
-      DB_PORT: ${LAB_DB_PORT}
-      DB_NAME: ${LAB_DB_NAME}
-      DB_USER: ${LAB_DB_USER}
-      DB_PASSWORD: ${LAB_DB_PASSWORD}
-    networks:
-      - scanner_net
-      - lab_net
-    depends_on:
-      lab-db:
-        condition: service_healthy
+
     healthcheck:
       test:
         - CMD
@@ -158,9 +100,137 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
+
     restart: unless-stopped
+
     security_opt:
       - no-new-privileges:true
+
+  secure-app:
+    build:
+      context: ./lab/app
+      dockerfile: Dockerfile
+
+    image: sqli-workshop-lab-app:local
+    container_name: sqli-secure-app
+
+    environment:
+      APP_PORT: ${LAB_APP_PORT:-8081}
+      APP_MODE: secure
+      DB_HOST: ${LAB_DB_HOST}
+      DB_PORT: ${LAB_DB_PORT}
+      DB_NAME: ${LAB_DB_NAME}
+      DB_USER: ${LAB_DB_USER}
+      DB_PASSWORD: ${LAB_DB_PASSWORD}
+
+    networks:
+      - scanner_net
+      - lab_net
+
+    depends_on:
+      lab-db:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - "-q"
+        - "-O"
+        - /dev/null
+        - http://localhost:8081/health
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+    image: sqli-workshop-backend:local
+    container_name: sqli-backend
+
+    environment:
+      SCANNER_DB_HOST: ${SCANNER_DB_HOST}
+      SCANNER_DB_PORT: ${SCANNER_DB_PORT}
+      SCANNER_DB_NAME: ${SCANNER_DB_NAME}
+      SCANNER_DB_USER: ${SCANNER_DB_USER}
+      SCANNER_DB_PASSWORD: ${SCANNER_DB_PASSWORD}
+      ALLOWED_EXTERNAL_HOSTS: ${ALLOWED_EXTERNAL_HOSTS:-}
+      GIN_MODE: ${GIN_MODE:-release}
+
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+
+    networks:
+      - public_net
+      - scanner_net
+
+    depends_on:
+      scanner-db:
+        condition: service_healthy
+      vulnerable-app:
+        condition: service_healthy
+      secure-app:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - "-q"
+        - "-O"
+        - /dev/null
+        - http://127.0.0.1:8080/health
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 15s
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    image: sqli-workshop-frontend:local
+    container_name: sqli-frontend
+
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:80"
+
+    networks:
+      - public_net
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'CONTAINER_IP=$$(hostname -i | cut -d " " -f 1); wget -q -O /dev/null "http://$${CONTAINER_IP}/" || exit 1'
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+
+    restart: unless-stopped
+
+    security_opt:
+      - no-new-privileges:true
+
 networks:
   public_net:
     name: sqli-public-net

@@ -11,18 +11,17 @@ import (
 	"time"
 
 	"github.com/LeirBaGMC/sql-scanner/database"
+	"github.com/LeirBaGMC/sql-scanner/policy"
 	"github.com/LeirBaGMC/sql-scanner/scanner"
 	"github.com/gin-gonic/gin"
 )
 
 type StartScanRequest struct {
-	Target string `json:"target" binding:"required"`
-}
-
-type ScanTarget struct {
-	Name      string
-	URL       string
-	Parameter string
+	Mode                   string `json:"mode"`
+	Target                 string `json:"target"`
+	URL                    string `json:"url"`
+	Parameter              string `json:"parameter"`
+	AuthorizationConfirmed bool   `json:"authorization_confirmed"`
 }
 
 type ScanStatusResponse struct {
@@ -50,18 +49,11 @@ type FindingResponse struct {
 	HTTPStatus    uint16 `json:"http_status,omitempty"`
 	CreatedAt     string `json:"created_at"`
 }
-
-var allowedTargets = map[string]ScanTarget{
-	"vulnerable-app": {
-		Name:      "Aplicacion vulnerable",
-		URL:       "http://vulnerable-app:8081/api/vulnerable/products?id=1",
-		Parameter: "id",
-	},
-	"secure-app": {
-		Name:      "Aplicacion segura",
-		URL:       "http://secure-app:8081/api/secure/products/1",
-		Parameter: "id",
-	},
+type ScanEventResponse struct {
+	ID        uint64 `json:"id"`
+	EventType string `json:"event_type"`
+	Message   string `json:"message"`
+	CreatedAt string `json:"created_at"`
 }
 
 func StartScanHandler(c *gin.Context) {
@@ -69,19 +61,27 @@ func StartScanHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "El campo target es obligatorio",
+			"error": "El cuerpo de la solicitud no es valido",
 		})
 		return
 	}
 
-	target, allowed := allowedTargets[request.Target]
-	if !allowed {
+	if request.Mode == "" {
+		request.Mode = policy.TargetModeSandbox
+	}
+
+	target, err := policy.ValidateTarget(
+		policy.TargetRequest{
+			Mode:                   request.Mode,
+			Target:                 request.Target,
+			URL:                    request.URL,
+			Parameter:              request.Parameter,
+			AuthorizationConfirmed: request.AuthorizationConfirmed,
+		},
+	)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "El objetivo solicitado no esta autorizado",
-			"allowed_targets": []string{
-				"vulnerable-app",
-				"secure-app",
-			},
+			"error": err.Error(),
 		})
 		return
 	}
@@ -137,13 +137,20 @@ func StartScanHandler(c *gin.Context) {
 		return
 	}
 
-	go scanner.RunScan(scanID, target.URL)
+	go scanner.RunScan(
+		scanID,
+		target.URL,
+		target.Parameter,
+		target.Mode,
+	)
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"scan_id":        scanID,
+		"mode":           target.Mode,
 		"target":         request.Target,
 		"target_name":    target.Name,
 		"target_url":     target.URL,
+		"host":           target.Host,
 		"parameter_name": target.Parameter,
 		"status":         "QUEUED",
 	})
@@ -436,6 +443,113 @@ func nullUint16Value(value sql.NullInt64) uint16 {
 	}
 
 	return uint16(value.Int64)
+}
+func GetScanEventsHandler(c *gin.Context) {
+	scanID := c.Param("id")
+
+	ctx, cancel := context.WithTimeout(
+		c.Request.Context(),
+		5*time.Second,
+	)
+	defer cancel()
+
+	exists, err := scanExists(ctx, scanID)
+	if err != nil {
+		log.Printf(
+			"No se pudo comprobar el escaneo %s: %v",
+			scanID,
+			err,
+		)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "No se pudieron consultar los eventos",
+		})
+		return
+	}
+
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Escaneo no encontrado",
+		})
+		return
+	}
+
+	const query = `
+		SELECT
+			id,
+			event_type,
+			message,
+			DATE_FORMAT(
+				created_at,
+				'%Y-%m-%dT%H:%i:%sZ'
+			)
+		FROM scan_events
+		WHERE scan_id = ?
+		ORDER BY id ASC
+	`
+
+	rows, err := database.DB.QueryContext(
+		ctx,
+		query,
+		scanID,
+	)
+	if err != nil {
+		log.Printf(
+			"No se pudieron consultar los eventos del escaneo %s: %v",
+			scanID,
+			err,
+		)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "No se pudieron obtener los eventos",
+		})
+		return
+	}
+	defer rows.Close()
+
+	events := make([]ScanEventResponse, 0)
+
+	for rows.Next() {
+		var event ScanEventResponse
+
+		err := rows.Scan(
+			&event.ID,
+			&event.EventType,
+			&event.Message,
+			&event.CreatedAt,
+		)
+		if err != nil {
+			log.Printf(
+				"No se pudo procesar un evento: %v",
+				err,
+			)
+
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "No se pudieron procesar los eventos",
+			})
+			return
+		}
+
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf(
+			"La lectura de eventos fue interrumpida: %v",
+			err,
+		)
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "La lectura de eventos fue interrumpida",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"scan_id": scanID,
+		"events":  events,
+		"total":   len(events),
+	})
 }
 func HealthHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(

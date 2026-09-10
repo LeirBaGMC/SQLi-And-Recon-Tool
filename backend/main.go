@@ -27,14 +27,26 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/health", api.HealthHandler)
-
 	apiGroup := router.Group("/api")
 	{
-		apiGroup.POST("/scans", api.StartScanHandler)
-		apiGroup.GET("/scans/:id", api.GetScanStatusHandler)
+		apiGroup.POST(
+			"/scans",
+			api.StartScanHandler,
+		)
+
+		apiGroup.GET(
+			"/scans/:id",
+			api.GetScanStatusHandler,
+		)
+
 		apiGroup.GET(
 			"/scans/:id/results",
 			api.GetScanResultsHandler,
+		)
+
+		apiGroup.GET(
+			"/scans/:id/events",
+			api.GetScanEventsHandler,
 		)
 	}
 
