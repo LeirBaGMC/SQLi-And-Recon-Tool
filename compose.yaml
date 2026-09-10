@@ -51,14 +51,31 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  backend-placeholder:
-    image: nginx:1.27-alpine
-    container_name: sqli-backend-placeholder
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: sqli-workshop-backend:local
+    container_name: sqli-backend
+    environment:
+      SCANNER_DB_HOST: ${SCANNER_DB_HOST}
+      SCANNER_DB_PORT: ${SCANNER_DB_PORT}
+      SCANNER_DB_NAME: ${SCANNER_DB_NAME}
+      SCANNER_DB_USER: ${SCANNER_DB_USER}
+      SCANNER_DB_PASSWORD: ${SCANNER_DB_PASSWORD}
+      GIN_MODE: ${GIN_MODE:-release}
     ports:
-      - "127.0.0.1:${BACKEND_PORT:-8080}:80"
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     networks:
       - public_net
       - scanner_net
+    depends_on:
+      scanner-db:
+        condition: service_healthy
+      vulnerable-app:
+        condition: service_healthy
+      secure-app:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD
@@ -66,11 +83,11 @@ services:
         - "-q"
         - "-O"
         - /dev/null
-        - http://localhost
+        - http://localhost:8080/health
       interval: 5s
       timeout: 3s
-      retries: 10
-      start_period: 5s
+      retries: 15
+      start_period: 15s
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

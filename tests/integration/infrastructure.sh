@@ -18,7 +18,7 @@ SERVICES="$(docker compose -f "$COMPOSE_FILE" config --services)"
 for SERVICE in \
     scanner-db \
     lab-db \
-    backend-placeholder \
+    backend \
     vulnerable-app \
     secure-app
 do
@@ -32,7 +32,7 @@ echo "[3/6] Verificando contenedores activos..."
 for SERVICE in \
     scanner-db \
     lab-db \
-    backend-placeholder \
+    backend \
     vulnerable-app \
     secure-app
 do

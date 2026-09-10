@@ -16,7 +16,7 @@ docker compose -f "$COMPOSE_FILE" config --quiet
 echo "[2/6] Verificando vulnerable-app..."
 
 VULNERABLE_HEALTH="$(
-    docker compose -f "$COMPOSE_FILE" exec -T backend-placeholder \
+    docker compose -f "$COMPOSE_FILE" exec -T backend \
         wget -qO- "http://vulnerable-app:8081/health"
 )"
 
@@ -38,7 +38,7 @@ echo "$VULNERABLE_HEALTH" | grep -q '"database":"connected"' || {
 echo "[3/6] Verificando secure-app..."
 
 SECURE_HEALTH="$(
-    docker compose -f "$COMPOSE_FILE" exec -T backend-placeholder \
+    docker compose -f "$COMPOSE_FILE" exec -T backend \
         wget -qO- "http://secure-app:8081/health"
 )"
 
@@ -60,7 +60,7 @@ echo "$SECURE_HEALTH" | grep -q '"database":"connected"' || {
 echo "[4/6] Verificando endpoint vulnerable..."
 
 VULNERABLE_RESPONSE="$(
-    docker compose -f "$COMPOSE_FILE" exec -T backend-placeholder \
+    docker compose -f "$COMPOSE_FILE" exec -T backend \
         wget -qO- \
         "http://vulnerable-app:8081/api/vulnerable/products?id=1"
 )"
@@ -104,7 +104,7 @@ echo "$VULNERABLE_RESPONSE" | grep -q '"recommendation":' || {
 echo "[5/6] Verificando consulta preparada..."
 
 SECURE_RESPONSE="$(
-    docker compose -f "$COMPOSE_FILE" exec -T backend-placeholder \
+    docker compose -f "$COMPOSE_FILE" exec -T backend \
         wget -qO- \
         "http://secure-app:8081/api/secure/products/1"
 )"
@@ -148,7 +148,7 @@ echo "$SECURE_RESPONSE" | grep -q '"recommendation":' || {
 echo "[6/6] Verificando bloqueo del endpoint vulnerable en secure-app..."
 
 BLOCK_RESPONSE="$(
-    docker compose -f "$COMPOSE_FILE" exec -T backend-placeholder \
+    docker compose -f "$COMPOSE_FILE" exec -T backend \
         sh -c '
             wget -S -O /dev/null \
                 "http://secure-app:8081/api/vulnerable/products?id=1" \
