@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS workshop_users (
     username VARCHAR(100) NOT NULL,
     display_name VARCHAR(150) NOT NULL,
     role_name VARCHAR(50) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_workshop_users_username (username)

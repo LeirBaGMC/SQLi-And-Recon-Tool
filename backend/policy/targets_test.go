@@ -20,7 +20,6 @@ func TestValidateAuthorizedExternalTarget(t *testing.T) {
 	request := TargetRequest{
 		Mode:                   TargetModeAuthorizedURL,
 		URL:                    "http://testaspnet.vulnweb.com/ReadNews.aspx?id=2",
-		Parameter:              "id",
 		AuthorizationConfirmed: true,
 	}
 
@@ -62,7 +61,6 @@ func TestRejectsUnauthorizedHost(t *testing.T) {
 	request := TargetRequest{
 		Mode:                   TargetModeAuthorizedURL,
 		URL:                    "https://example.com/products?id=2",
-		Parameter:              "id",
 		AuthorizationConfirmed: true,
 	}
 
@@ -90,7 +88,6 @@ func TestRejectsMissingAuthorization(t *testing.T) {
 	request := TargetRequest{
 		Mode:                   TargetModeAuthorizedURL,
 		URL:                    "http://testaspnet.vulnweb.com/ReadNews.aspx?id=2",
-		Parameter:              "id",
 		AuthorizationConfirmed: false,
 	}
 
@@ -103,7 +100,7 @@ func TestRejectsMissingAuthorization(t *testing.T) {
 	}
 }
 
-func TestRejectsMissingParameter(t *testing.T) {
+func TestAllowsURLWithoutParameterForDiscovery(t *testing.T) {
 	err := os.Setenv(
 		"ALLOWED_EXTERNAL_HOSTS",
 		"testaspnet.vulnweb.com",
@@ -118,15 +115,29 @@ func TestRejectsMissingParameter(t *testing.T) {
 	request := TargetRequest{
 		Mode:                   TargetModeAuthorizedURL,
 		URL:                    "http://testaspnet.vulnweb.com/ReadNews.aspx",
-		Parameter:              "id",
 		AuthorizationConfirmed: true,
 	}
 
-	_, err = ValidateTarget(request)
+	target, err := ValidateTarget(request)
+	if err != nil {
+		t.Fatalf("se esperaba permitir URL sin parametro para el modo descubrimiento: %v", err)
+	}
 
-	if err == nil {
-		t.Fatal(
-			"se esperaba rechazar una URL sin el parametro",
-		)
+	if target.Parameter != "" {
+		t.Fatalf("se esperaba parametro vacio, se obtuvo: %s", target.Parameter)
 	}
 }
+
+func TestRejectsInvalidProtocol(t *testing.T) {
+	request := TargetRequest{
+		Mode:                   TargetModeAuthorizedURL,
+		URL:                    "ftp://testaspnet.vulnweb.com/file",
+		AuthorizationConfirmed: true,
+	}
+
+	_, err := ValidateTarget(request)
+	if err == nil {
+		t.Fatal("se esperaba rechazar protocolo no HTTP/HTTPS")
+	}
+}
+

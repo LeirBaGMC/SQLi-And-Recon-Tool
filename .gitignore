@@ -25,7 +25,16 @@ frontend/dist/
 backend/main
 backend/bin/
 
-# Archivos temporales de Vim
+# IDEs y editores
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Archivos temporales de Vim y editores
 *.swp
 *.swo
 *~

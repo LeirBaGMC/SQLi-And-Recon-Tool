@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -14,45 +15,53 @@ const (
 )
 
 type AuthorizedTarget struct {
-	Mode      string
-	Name      string
-	URL       string
-	Host      string
-	Parameter string
+	Mode          string
+	Name          string
+	URL           string
+	Host          string
+	Parameter     string
+	OriginalValue string
 }
 
 type TargetRequest struct {
 	Mode                   string
 	Target                 string
 	URL                    string
-	Parameter              string
 	AuthorizationConfirmed bool
 }
 
 var sandboxTargets = map[string]AuthorizedTarget{
 	"vulnerable-app": {
-		Mode:      TargetModeSandbox,
-		Name:      "Aplicacion vulnerable",
-		URL:       "http://vulnerable-app:8081/api/vulnerable/products?id=1",
-		Host:      "vulnerable-app",
-		Parameter: "id",
+		Mode:          TargetModeSandbox,
+		Name:          "Aplicacion vulnerable",
+		URL:           "http://vulnerable-app:8081/api/vulnerable/products?id=1",
+		Host:          "vulnerable-app",
+		Parameter:     "id",
+		OriginalValue: "1",
 	},
 	"secure-app": {
-		Mode:      TargetModeSandbox,
-		Name:      "Aplicacion reparada",
-		URL:       "http://secure-app:8081/api/secure/products/1",
-		Host:      "secure-app",
-		Parameter: "id",
+		Mode:          TargetModeSandbox,
+		Name:          "Aplicacion reparada",
+		URL:           "http://secure-app:8081/api/secure/products/1",
+		Host:          "secure-app",
+		Parameter:     "id",
+		OriginalValue: "1",
 	},
 }
 
-func ValidateTarget(request TargetRequest) (AuthorizedTarget, error) {
+func ValidateTarget(
+	request TargetRequest,
+) (AuthorizedTarget, error) {
 	switch request.Mode {
 	case TargetModeSandbox:
-		return validateSandboxTarget(request.Target)
+		return validateSandboxTarget(
+			request.Target,
+		)
 
 	case TargetModeAuthorizedURL:
-		return validateExternalTarget(request)
+		return validateExternalTarget(
+			request,
+		)
 
 	default:
 		return AuthorizedTarget{}, fmt.Errorf(
@@ -64,6 +73,10 @@ func ValidateTarget(request TargetRequest) (AuthorizedTarget, error) {
 func validateSandboxTarget(
 	targetName string,
 ) (AuthorizedTarget, error) {
+	targetName = strings.TrimSpace(
+		targetName,
+	)
+
 	target, allowed := sandboxTargets[targetName]
 
 	if !allowed {
@@ -84,8 +97,9 @@ func validateExternalTarget(
 		)
 	}
 
-	rawURL := strings.TrimSpace(request.URL)
-	parameterName := strings.TrimSpace(request.Parameter)
+	rawURL := strings.TrimSpace(
+		request.URL,
+	)
 
 	if rawURL == "" {
 		return AuthorizedTarget{}, fmt.Errorf(
@@ -93,13 +107,15 @@ func validateExternalTarget(
 		)
 	}
 
-	if parameterName == "" {
+	if len(rawURL) > 2048 {
 		return AuthorizedTarget{}, fmt.Errorf(
-			"el parametro que se analizara es obligatorio",
+			"la URL supera el limite permitido",
 		)
 	}
 
-	parsedURL, err := url.ParseRequestURI(rawURL)
+	parsedURL, err := url.ParseRequestURI(
+		rawURL,
+	)
 	if err != nil {
 		return AuthorizedTarget{}, fmt.Errorf(
 			"la URL proporcionada no es valida",
@@ -131,11 +147,8 @@ func validateExternalTarget(
 		)
 	}
 
-	host := strings.ToLower(
-		strings.TrimSuffix(
-			parsedURL.Hostname(),
-			".",
-		),
+	host := normalizeHost(
+		parsedURL.Hostname(),
 	)
 
 	if net.ParseIP(host) != nil {
@@ -150,47 +163,85 @@ func validateExternalTarget(
 		)
 	}
 
-	queryValues := parsedURL.Query()
-
-	if !queryValues.Has(parameterName) {
-		return AuthorizedTarget{}, fmt.Errorf(
-			"la URL no contiene el parametro indicado",
-		)
-	}
-
-	parameterValue := strings.TrimSpace(
-		queryValues.Get(parameterName),
-	)
-
-	if parameterValue == "" {
-		return AuthorizedTarget{}, fmt.Errorf(
-			"el parametro indicado no puede estar vacio",
-		)
-	}
-
-	if len(parameterName) > 100 {
-		return AuthorizedTarget{}, fmt.Errorf(
-			"el nombre del parametro supera el limite permitido",
-		)
-	}
-
-	if len(rawURL) > 2048 {
-		return AuthorizedTarget{}, fmt.Errorf(
-			"la URL supera el limite permitido",
-		)
-	}
+	parameterName, originalValue :=
+		detectOptionalParameter(parsedURL)
 
 	return AuthorizedTarget{
-		Mode:      TargetModeAuthorizedURL,
-		Name:      "URL externa autorizada",
-		URL:       parsedURL.String(),
-		Host:      host,
-		Parameter: parameterName,
+		Mode:          TargetModeAuthorizedURL,
+		Name:          "URL externa autorizada",
+		URL:           parsedURL.String(),
+		Host:          host,
+		Parameter:     parameterName,
+		OriginalValue: originalValue,
 	}, nil
 }
 
-func isAllowedExternalHost(host string) bool {
-	allowedHosts := loadAllowedExternalHosts()
+func detectOptionalParameter(
+	parsedURL *url.URL,
+) (string, string) {
+	queryValues := parsedURL.Query()
+
+	if len(queryValues) == 0 {
+		return "", ""
+	}
+
+	parameterNames := make(
+		[]string,
+		0,
+		len(queryValues),
+	)
+
+	for parameterName := range queryValues {
+		parameterNames = append(
+			parameterNames,
+			parameterName,
+		)
+	}
+
+	sort.Strings(parameterNames)
+
+	for _, parameterName := range parameterNames {
+		normalizedName := strings.TrimSpace(
+			parameterName,
+		)
+
+		if normalizedName == "" {
+			continue
+		}
+
+		if len(normalizedName) > 100 {
+			continue
+		}
+
+		values := queryValues[parameterName]
+
+		if len(values) == 0 {
+			continue
+		}
+
+		originalValue := strings.TrimSpace(
+			values[0],
+		)
+
+		if originalValue == "" {
+			continue
+		}
+
+		if len(originalValue) > 500 {
+			continue
+		}
+
+		return normalizedName, originalValue
+	}
+
+	return "", ""
+}
+
+func isAllowedExternalHost(
+	host string,
+) bool {
+	allowedHosts :=
+		loadAllowedExternalHosts()
 
 	_, allowed := allowedHosts[host]
 
@@ -204,28 +255,35 @@ func loadAllowedExternalHosts() map[string]bool {
 		"ALLOWED_EXTERNAL_HOSTS",
 	)
 
-	for _, configuredHost := range strings.Split(
+	hostEntries := strings.Split(
 		configuredHosts,
 		",",
-	) {
-		normalizedHost := strings.ToLower(
-			strings.TrimSpace(configuredHost),
-		)
+	)
 
-		normalizedHost = strings.TrimSuffix(
-			normalizedHost,
-			".",
+	for _, configuredHost := range hostEntries {
+		normalizedHost := normalizeHost(
+			configuredHost,
 		)
 
 		if normalizedHost == "" {
 			continue
 		}
 
-		if strings.Contains(normalizedHost, "://") {
+		if strings.Contains(
+			normalizedHost,
+			"://",
+		) {
 			continue
 		}
 
-		if strings.Contains(normalizedHost, "/") {
+		if strings.Contains(
+			normalizedHost,
+			"/",
+		) {
+			continue
+		}
+
+		if net.ParseIP(normalizedHost) != nil {
 			continue
 		}
 
@@ -233,4 +291,17 @@ func loadAllowedExternalHosts() map[string]bool {
 	}
 
 	return result
+}
+
+func normalizeHost(
+	host string,
+) string {
+	normalizedHost := strings.ToLower(
+		strings.TrimSpace(host),
+	)
+
+	return strings.TrimSuffix(
+		normalizedHost,
+		".",
+	)
 }
