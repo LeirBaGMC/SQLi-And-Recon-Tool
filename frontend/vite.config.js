@@ -1,20 +1,30 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+
   server: {
-    host: true,          // Permite que Docker acceda al servidor dev
-    port: 3000,          // Puerto que usarás en modo desarrollo
+    host: true,
+    port: 3000,
+
     proxy: {
-      '/api': {
-        target: 'http://backend:8080',
+      "/api": {
+        target: "http://backend:8080",
         changeOrigin: true,
         secure: false,
-      }
-    }
+      },
+
+      "/health/backend": {
+        target: "http://backend:8080",
+        changeOrigin: true,
+        secure: false,
+        rewrite: () => "/health",
+      },
+    },
   },
+
   build: {
-    outDir: 'dist',       // Donde se generará la build para Nginx
-  }
-})
+    outDir: "dist",
+  },
+});
