@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-10-04T22:13:39.176130+00:00",
+  "target": "http://127.0.0.1:8000/vulnerabilities/sqli/?id=1&Submit=Submit",
+  "dvwa_security": "low",
+  "sqlmap_version": "1.10.9.32#dev",
+  "sqlmap_revision": "1d9965d0033d7a0e9e8bfd9cb066a5e4cb55b590",
+  "method": "Sequential runs, alternating order, fresh sessions. End-to-end monotonic clock: login + detection; app polling interval 50 ms. sqlmap Python startup included. Result-report rendering excluded.",
+  "scope": "App: SQL error signature + two repeated boolean pairs. sqlmap: boolean-only, id, MySQL, level 1, risk 1, one thread. Both confirm boolean injection; algorithms and payload counts differ. No enumeration requested.",
+  "limitations": "Same DVWA instance; app HTTP runs through Docker DNS, sqlmap through host loopback. Pilot on one machine, not a general performance ranking.",
+  "runs": [
+    {
+      "run": 1,
+      "tool": "SQLi Studio",
+      "seconds": 0.1755,
+      "boolean_detected": true,
+      "probes": 2,
+      "scan_id": "fbca840f2fe8186027ac30c4096a95e4"
+    },
+    {
+      "run": 1,
+      "tool": "sqlmap",
+      "seconds": 5.5795,
+      "boolean_detected": true,
+      "detection_http_requests": 163,
+      "exit_code": 0
+    },
+    {
+      "run": 2,
+      "tool": "sqlmap",
+      "seconds": 5.5251,
+      "boolean_detected": true,
+      "detection_http_requests": 163,
+      "exit_code": 0
+    },
+    {
+      "run": 2,
+      "tool": "SQLi Studio",
+      "seconds": 0.1963,
+      "boolean_detected": true,
+      "probes": 2,
+      "scan_id": "2cba434d0fd340b20dc268d3684d2243"
+    },
+    {
+      "run": 3,
+      "tool": "SQLi Studio",
+      "seconds": 0.1777,
+      "boolean_detected": true,
+      "probes": 2,
+      "scan_id": "b9ed68426a677368d0662d97f66f88f5"
+    },
+    {
+      "run": 3,
+      "tool": "sqlmap",
+      "seconds": 5.4615,
+      "boolean_detected": true,
+      "detection_http_requests": 163,
+      "exit_code": 0
+    }
+  ],
+  "medians_seconds": {
+    "SQLi Studio": 0.1777,
+    "sqlmap": 5.5251
+  }
+}
