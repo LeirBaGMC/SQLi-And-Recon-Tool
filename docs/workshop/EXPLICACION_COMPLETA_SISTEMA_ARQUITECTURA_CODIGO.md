@@ -1,3 +1,5 @@
+> Referencia histórica: este documento describe el laboratorio anterior. La implementación actual utiliza DVWA; consulta [README](../../README.md).
+
 # 📖 DOCUMENTO MAESTRO: EXPLICACIÓN EXHAUSTIVA DE ARQUITECTURA, CÓDIGO Y FLUJOS
 ## Proyecto: SQLi Purple Team Studio (TICEC 2026)
 ### Detección de Inyección SQL (CWE-89), Observabilidad en Kernel con eBPF y Remediación Defensiva

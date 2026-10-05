@@ -1,3 +1,5 @@
+> Referencia histórica: este documento describe el laboratorio anterior. La implementación actual utiliza DVWA; consulta [README](../../README.md).
+
 # TICEC 2026 · GUÍA MAESTRA, COMPENDIO CONCEPTUAL Y GUION DEL PONENTE
 
 **Título del Workshop:**  

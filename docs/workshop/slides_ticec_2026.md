@@ -1,3 +1,5 @@
+> Referencia histórica: este documento describe el laboratorio anterior. La implementación actual utiliza DVWA; consulta [README](../../README.md).
+
 ---
 marp: true
 theme: gaia
