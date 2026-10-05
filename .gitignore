@@ -38,3 +38,9 @@ backend/bin/
 *.swp
 *.swo
 *~
+
+# Herramienta de comparación descargada desde su repositorio oficial
+tools/sqlmap/
+
+# Construcción y verificación privada de la presentación del workshop
+docs/workshop-90/.build/

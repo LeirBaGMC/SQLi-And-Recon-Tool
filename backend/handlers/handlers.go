@@ -40,7 +40,7 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 	}
 
 	if request.Mode == "" {
-		request.Mode = policy.TargetModeSandbox
+		request.Mode = policy.TargetModeDVWA
 	}
 
 	target, err := policy.ValidateTarget(policy.TargetRequest{
@@ -48,6 +48,7 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 		Target:                 request.Target,
 		URL:                    request.URL,
 		AuthorizationConfirmed: request.AuthorizationConfirmed,
+		DVWALevel:              request.DVWALevel,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -66,13 +67,12 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 	}
 
 	scanRecord := &models.ScanStatusResponse{
-		ID:            scanID,
-		ScanID:        scanID,
-		TargetName:    target.Name,
-		TargetURL:     target.URL,
-		Parameter:     target.Parameter,
-		OriginalValue: target.OriginalValue,
-		Status:        "QUEUED",
+		ID:         scanID,
+		ScanID:     scanID,
+		TargetName: target.Name,
+		TargetURL:  target.URL,
+		Parameter:  target.Parameter,
+		Status:     "QUEUED",
 	}
 
 	if err = h.repo.CreateScan(scanRecord); err != nil {
@@ -85,13 +85,8 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 
 	h.repo.CreateEventWithoutInterrupting(scanID, "SCAN_QUEUED", "El escaneo fue encolado para su ejecucion")
 
-	workers := request.MaxWorkers
-	if workers <= 0 {
-		workers = 5
-	}
-
-	// Ejecución asíncrona mediante el Worker Pool concurrente
-	go scanner.RunScan(scanID, target.URL, target.Parameter, target.Mode, workers, h.repo)
+	// La respuesta HTTP no espera al escaneo; cada escaneo ejecuta sondas secuenciales.
+	go scanner.RunScan(scanID, target, h.repo)
 
 	c.JSON(http.StatusAccepted, gin.H{
 		"id":             scanID,
@@ -102,10 +97,11 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 		"parameter_name": target.Parameter,
 		"original_value": target.OriginalValue,
 		"status":         "QUEUED",
+		"dvwa_level":     target.DVWALevel,
 	})
 }
 
-// GetScanStatusHandler retorna el estado actual de un escaneo junto con su reporte de remediación.
+// GetScanStatusHandler retorna el estado; el reporte se consulta en /results.
 func (h *Handler) GetScanStatusHandler(c *gin.Context) {
 	scanID := strings.TrimSpace(c.Param("id"))
 	if scanID == "" {
@@ -121,12 +117,6 @@ func (h *Handler) GetScanStatusHandler(c *gin.Context) {
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo consultar el escaneo"})
 		return
-	}
-
-	// Si el escaneo está completado, adjuntar el informe técnico de remediación
-	if scan.Status == "COMPLETED" {
-		findings, _ := h.repo.GetFindingsByScanID(scanID)
-		scan.RemediationReport = remediation.GenerateReport(scanID, findings, scan.TargetName)
 	}
 
 	c.JSON(http.StatusOK, scan)

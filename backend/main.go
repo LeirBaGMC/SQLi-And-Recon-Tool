@@ -18,7 +18,7 @@ func main() {
 		}
 	}()
 
-	repo := database.GetDefaultRepository()
+	repo := database.NewRepository(database.DB)
 	r := router.SetupRouter(repo)
 
 	log.Println("Servidor del escáner iniciado en :8080 (Purple Team TICEC 2026)")

@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"encoding/json"
 	"log"
 	"time"
 
@@ -17,11 +16,6 @@ type Repository struct {
 // NewRepository crea una nueva instancia de Repository usando el pool de conexiones actual.
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
-}
-
-// GetDefaultRepository retorna un repositorio respaldado por la conexión global DB.
-func GetDefaultRepository() *Repository {
-	return &Repository{db: DB}
 }
 
 // CreateScan inicializa un nuevo registro de escaneo en la base de datos.
@@ -91,7 +85,7 @@ func (r *Repository) UpdateScanStatus(scanID, status, errorMessage string, setSt
 		_, err := r.db.Exec(`UPDATE scans SET status = ?, error_message = NULL, started_at = CURRENT_TIMESTAMP WHERE id = ?`, status, scanID)
 		return err
 	case setCompletedAt:
-		_, err := r.db.Exec(`UPDATE scans SET status = ?, error_message = NULL, completed_at = CURRENT_TIMESTAMP WHERE id = ?`, status, scanID)
+		_, err := r.db.Exec(`UPDATE scans SET status = ?, error_message = NULLIF(?, ''), completed_at = CURRENT_TIMESTAMP WHERE id = ?`, status, errorMessage, scanID)
 		return err
 	default:
 		_, err := r.db.Exec(`UPDATE scans SET status = ?, error_message = ? WHERE id = ?`, status, errorMessage, scanID)
@@ -172,14 +166,6 @@ func (r *Repository) GetFindingsByScanID(scanID string) ([]models.Finding, error
 			return nil, err
 		}
 		f.CreatedAt = createdAt.Format(time.RFC3339)
-
-		// Deserializar evidencia de confirmación dual si existe en formato JSON
-		if f.Evidence != "" {
-			var dual models.DualConfirmation
-			if json.Unmarshal([]byte(f.Evidence), &dual) == nil && dual.HTTP.Confirmed {
-				f.DualConfirmation = &dual
-			}
-		}
 
 		findings = append(findings, f)
 	}

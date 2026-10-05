@@ -11,12 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LeirBaGMC/sql-scanner/models"
+
 	"golang.org/x/net/html"
 )
 
 const (
-	discoveryPageLimit    = 20
-	discoveryDepthLimit   = 2
+	discoveryPageLimit    = 5
+	discoveryDepthLimit   = 1
 	discoveryBodyLimit    = 1048576
 	discoveryRequestLimit = 8 * time.Second
 )
@@ -25,7 +27,6 @@ type DiscoveryCandidate struct {
 	URL           string
 	ParameterName string
 	OriginalValue string
-	SourceURL     string
 }
 
 type DiscoverySummary struct {
@@ -40,9 +41,7 @@ type discoveryQueueItem struct {
 	Depth int
 }
 
-func DiscoverCandidates(
-	startURL string,
-) ([]DiscoveryCandidate, DiscoverySummary, error) {
+func discoverCandidates(client *http.Client, startURL string, observe httpObserver) ([]DiscoveryCandidate, DiscoverySummary, error) {
 	summary := DiscoverySummary{
 		StartURL: startURL,
 	}
@@ -70,32 +69,6 @@ func DiscoverCandidates(
 		return nil, summary, fmt.Errorf(
 			"la URL inicial no contiene un dominio valido",
 		)
-	}
-
-	client := http.Client{
-		Timeout: discoveryRequestLimit,
-		CheckRedirect: func(
-			request *http.Request,
-			previousRequests []*http.Request,
-		) error {
-			redirectHostname := strings.ToLower(
-				request.URL.Hostname(),
-			)
-
-			if redirectHostname != startHostname {
-				return fmt.Errorf(
-					"la redireccion apunta a otro dominio",
-				)
-			}
-
-			if len(previousRequests) >= 5 {
-				return fmt.Errorf(
-					"se alcanzo el limite de redirecciones",
-				)
-			}
-
-			return nil
-		},
 	}
 
 	initialURL := normalizeDiscoveredURL(
@@ -128,19 +101,34 @@ func DiscoverCandidates(
 
 		visitedPages[currentItem.URL] = true
 
+		step := models.LabActivityEvent{StepID: fmt.Sprintf("discovery-%d", len(visitedPages)), Stage: "discovery", State: "running", Summary: "Comprobar pagina · Descubrimiento", Method: http.MethodGet, URL: currentItem.URL}
+		observeHTTP(observe, step)
+		started := time.Now()
 		pageResult, err := fetchDiscoveryPage(
-			client,
+			*client,
 			currentItem.URL,
 			startHostname,
 		)
+		duration := uint64(time.Since(started).Milliseconds())
+		step.DurationMS = &duration
 		if err != nil {
+			step.State, step.Detail = "failed", err.Error()
+			if pageResult.StatusCode != 0 {
+				step.State, step.StatusCode = "http_error", &pageResult.StatusCode
+			}
+			observeHTTP(observe, step)
+			if currentItem.Depth == 0 {
+				return nil, summary, externalRequestError(err)
+			}
 			continue
 		}
+		bytes := len(pageResult.Body)
+		step.State, step.StatusCode, step.ResponseBytes = "completed", &pageResult.StatusCode, &bytes
+		observeHTTP(observe, step)
 
 		summary.PagesVisited++
 
 		pageCandidates := extractCandidates(
-			pageResult.FinalURL,
 			pageResult.FinalURL,
 		)
 
@@ -165,7 +153,6 @@ func DiscoverCandidates(
 		for _, discoveredURL := range links {
 			discoveredCandidates := extractCandidates(
 				discoveredURL,
-				pageResult.FinalURL,
 			)
 
 			appendUniqueCandidates(
@@ -224,8 +211,9 @@ func DiscoverCandidates(
 }
 
 type discoveryPageResult struct {
-	FinalURL string
-	Body     string
+	FinalURL   string
+	Body       string
+	StatusCode int
 }
 
 func fetchDiscoveryPage(
@@ -264,6 +252,9 @@ func fetchDiscoveryPage(
 		return discoveryPageResult{}, err
 	}
 	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return discoveryPageResult{StatusCode: response.StatusCode}, fmt.Errorf("El objetivo devolvio HTTP %d; no se pudo descubrir parametros", response.StatusCode)
+	}
 
 	finalHostname := strings.ToLower(
 		response.Request.URL.Hostname(),
@@ -292,16 +283,20 @@ func fetchDiscoveryPage(
 	bodyBytes, err := io.ReadAll(
 		io.LimitReader(
 			response.Body,
-			discoveryBodyLimit,
+			discoveryBodyLimit+1,
 		),
 	)
 	if err != nil {
 		return discoveryPageResult{}, err
 	}
+	if len(bodyBytes) > discoveryBodyLimit {
+		return discoveryPageResult{StatusCode: response.StatusCode}, fmt.Errorf("la pagina supera el limite de 1 MiB")
+	}
 
 	return discoveryPageResult{
-		FinalURL: response.Request.URL.String(),
-		Body:     string(bodyBytes),
+		FinalURL:   response.Request.URL.String(),
+		Body:       string(bodyBytes),
+		StatusCode: response.StatusCode,
 	}, nil
 }
 
@@ -445,6 +440,9 @@ func resolveDiscoveredLink(
 	) {
 		return "", false
 	}
+	if resolvedURL.User != nil || resolvedURL.Scheme != baseURL.Scheme || !strings.EqualFold(resolvedURL.Host, baseURL.Host) {
+		return "", false
+	}
 
 	resolvedURL.Fragment = ""
 
@@ -459,7 +457,6 @@ func resolveDiscoveredLink(
 
 func extractCandidates(
 	rawURL string,
-	sourceURL string,
 ) []DiscoveryCandidate {
 	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
@@ -526,7 +523,6 @@ func extractCandidates(
 				),
 				ParameterName: normalizedName,
 				OriginalValue: originalValue,
-				SourceURL:     sourceURL,
 			},
 		)
 	}
