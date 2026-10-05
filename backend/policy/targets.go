@@ -2,19 +2,20 @@ package policy
 
 import (
 	"fmt"
-	"net"
 	"net/url"
-	"os"
 	"sort"
 	"strings"
 )
 
 const (
-	TargetModeSandbox       = "sandbox"
+	TargetModeSandbox       = "sandbox" // Alias de compatibilidad para solicitudes anteriores.
+	TargetModeDVWA          = "dvwa"
 	TargetModeAuthorizedURL = "authorized_url"
 )
 
 type AuthorizedTarget struct {
+	BasicAuth     *url.Userinfo `json:"-"`
+	DVWALevel     string
 	Mode          string
 	Name          string
 	URL           string
@@ -24,6 +25,7 @@ type AuthorizedTarget struct {
 }
 
 type TargetRequest struct {
+	DVWALevel              string
 	Mode                   string
 	Target                 string
 	URL                    string
@@ -31,19 +33,11 @@ type TargetRequest struct {
 }
 
 var sandboxTargets = map[string]AuthorizedTarget{
-	"vulnerable-app": {
-		Mode:          TargetModeSandbox,
-		Name:          "Aplicacion vulnerable",
-		URL:           "http://vulnerable-app:8081/api/vulnerable/products?id=1",
-		Host:          "vulnerable-app",
-		Parameter:     "id",
-		OriginalValue: "1",
-	},
-	"secure-app": {
-		Mode:          TargetModeSandbox,
-		Name:          "Aplicacion reparada",
-		URL:           "http://secure-app:8081/api/secure/products/1",
-		Host:          "secure-app",
+	"dvwa": {
+		Mode:          TargetModeDVWA,
+		Name:          "DVWA · SQL Injection (Low)",
+		URL:           "http://dvwa/vulnerabilities/sqli/?id=1&Submit=Submit",
+		Host:          "dvwa",
 		Parameter:     "id",
 		OriginalValue: "1",
 	},
@@ -53,10 +47,24 @@ func ValidateTarget(
 	request TargetRequest,
 ) (AuthorizedTarget, error) {
 	switch request.Mode {
-	case TargetModeSandbox:
-		return validateSandboxTarget(
-			request.Target,
-		)
+	case TargetModeSandbox, TargetModeDVWA:
+		target, err := validateSandboxTarget(request.Target)
+		if err != nil {
+			return AuthorizedTarget{}, err
+		}
+		level := strings.ToLower(strings.TrimSpace(request.DVWALevel))
+		if level == "" {
+			level = "low"
+		}
+		if level != "low" && level != "medium" {
+			return AuthorizedTarget{}, fmt.Errorf("el laboratorio admite los niveles Low y Medium")
+		}
+		target.DVWALevel = level
+		if level == "medium" {
+			target.Name = "DVWA · SQL Injection (Medium)"
+			target.URL = "http://dvwa/vulnerabilities/sqli/"
+		}
+		return target, nil
 
 	case TargetModeAuthorizedURL:
 		return validateExternalTarget(
@@ -135,12 +143,6 @@ func validateExternalTarget(
 		)
 	}
 
-	if parsedURL.User != nil {
-		return AuthorizedTarget{}, fmt.Errorf(
-			"no se permiten credenciales dentro de la URL",
-		)
-	}
-
 	if parsedURL.Fragment != "" {
 		return AuthorizedTarget{}, fmt.Errorf(
 			"la URL no debe contener fragmentos",
@@ -151,22 +153,13 @@ func validateExternalTarget(
 		parsedURL.Hostname(),
 	)
 
-	if net.ParseIP(host) != nil {
-		return AuthorizedTarget{}, fmt.Errorf(
-			"no se permiten direcciones IP como objetivo externo",
-		)
-	}
-
-	if !isAllowedExternalHost(host) {
-		return AuthorizedTarget{}, fmt.Errorf(
-			"el dominio solicitado no esta admitido para este workshop",
-		)
-	}
-
 	parameterName, originalValue :=
 		detectOptionalParameter(parsedURL)
+	credentials := parsedURL.User
+	parsedURL.User = nil
 
 	return AuthorizedTarget{
+		BasicAuth:     credentials,
 		Mode:          TargetModeAuthorizedURL,
 		Name:          "URL externa autorizada",
 		URL:           parsedURL.String(),
@@ -235,62 +228,6 @@ func detectOptionalParameter(
 	}
 
 	return "", ""
-}
-
-func isAllowedExternalHost(
-	host string,
-) bool {
-	allowedHosts :=
-		loadAllowedExternalHosts()
-
-	_, allowed := allowedHosts[host]
-
-	return allowed
-}
-
-func loadAllowedExternalHosts() map[string]bool {
-	result := make(map[string]bool)
-
-	configuredHosts := os.Getenv(
-		"ALLOWED_EXTERNAL_HOSTS",
-	)
-
-	hostEntries := strings.Split(
-		configuredHosts,
-		",",
-	)
-
-	for _, configuredHost := range hostEntries {
-		normalizedHost := normalizeHost(
-			configuredHost,
-		)
-
-		if normalizedHost == "" {
-			continue
-		}
-
-		if strings.Contains(
-			normalizedHost,
-			"://",
-		) {
-			continue
-		}
-
-		if strings.Contains(
-			normalizedHost,
-			"/",
-		) {
-			continue
-		}
-
-		if net.ParseIP(normalizedHost) != nil {
-			continue
-		}
-
-		result[normalizedHost] = true
-	}
-
-	return result
 }
 
 func normalizeHost(

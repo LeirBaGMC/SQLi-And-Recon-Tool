@@ -4,251 +4,148 @@ services:
   scanner-db:
     image: mysql:8.0
     container_name: sqli-scanner-db
-
     environment:
       MYSQL_DATABASE: ${SCANNER_DB_NAME}
       MYSQL_USER: ${SCANNER_DB_USER}
       MYSQL_PASSWORD: ${SCANNER_DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${SCANNER_DB_ROOT_PASSWORD}
-
     volumes:
       - scanner_db_data:/var/lib/mysql
       - ./infrastructure/mysql/scanner/init:/docker-entrypoint-initdb.d:ro
-
-    networks:
-      - scanner_net
-
+    networks: [scanner_net]
     healthcheck:
-      test:
-        - CMD-SHELL
-        - 'mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent'
+      test: [CMD-SHELL, 'mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent']
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 20s
-
     restart: unless-stopped
+    security_opt: [no-new-privileges:true]
 
-    security_opt:
-      - no-new-privileges:true
-
-  lab-db:
-    image: mysql:8.0
-    container_name: sqli-lab-db
-
+  dvwa-db:
+    image: mariadb:10.11
+    container_name: sqli-dvwa-db
     environment:
-      MYSQL_DATABASE: ${LAB_DB_NAME}
-      MYSQL_USER: ${LAB_DB_USER}
-      MYSQL_PASSWORD: ${LAB_DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${LAB_DB_ROOT_PASSWORD}
-
+      MYSQL_DATABASE: dvwa
+      MYSQL_USER: dvwa
+      MYSQL_PASSWORD: ${DVWA_DB_PASSWORD:-dvwa_local_password}
+      MYSQL_ROOT_PASSWORD: ${DVWA_DB_ROOT_PASSWORD:-dvwa_local_root_password}
     volumes:
-      - lab_db_data:/var/lib/mysql
-      - ./infrastructure/mysql/lab/init:/docker-entrypoint-initdb.d:ro
-
-    networks:
-      - lab_net
-
+      - dvwa_db_data:/var/lib/mysql
+    networks: [dvwa_net]
     healthcheck:
-      test:
-        - CMD-SHELL
-        - 'mysqladmin ping -h localhost -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent'
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 20s
-
     restart: unless-stopped
+    security_opt: [no-new-privileges:true]
 
-    security_opt:
-      - no-new-privileges:true
-
-  vulnerable-app:
-    build:
-      context: ./lab/app
-      dockerfile: Dockerfile
-
-    image: sqli-workshop-lab-app:local
-    container_name: sqli-vulnerable-app
-
-    environment:
-      APP_PORT: ${LAB_APP_PORT:-8081}
-      APP_MODE: vulnerable
-      DB_HOST: ${LAB_DB_HOST}
-      DB_PORT: ${LAB_DB_PORT}
-      DB_NAME: ${LAB_DB_NAME}
-      DB_USER: ${LAB_DB_USER}
-      DB_PASSWORD: ${LAB_DB_PASSWORD}
-
-    networks:
-      - scanner_net
-      - lab_net
-
+  dvwa:
+    image: ghcr.io/digininja/dvwa:latest
+    container_name: sqli-dvwa
+    environment: &dvwa-environment
+      DB_SERVER: dvwa-db
+      DB_DATABASE: dvwa
+      DB_USER: dvwa
+      DB_PASSWORD: ${DVWA_DB_PASSWORD:-dvwa_local_password}
+      DEFAULT_SECURITY_LEVEL: low
+    ports:
+      - "127.0.0.1:${DVWA_PORT:-8000}:80"
+    networks: [dvwa_access_net, scanner_net, dvwa_net]
     depends_on:
-      lab-db:
+      dvwa-db:
         condition: service_healthy
-
     healthcheck:
-      test:
-        - CMD
-        - wget
-        - "-q"
-        - "-O"
-        - /dev/null
-        - http://localhost:8081/health
+      test: [CMD, php, -r, "exit(@file_get_contents('http://127.0.0.1/login.php') === false ? 1 : 0);"]
       interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-
+      timeout: 5s
+      retries: 20
+      start_period: 15s
     restart: unless-stopped
+    security_opt: [no-new-privileges:true]
 
-    security_opt:
-      - no-new-privileges:true
-
-  secure-app:
-    build:
-      context: ./lab/app
-      dockerfile: Dockerfile
-
-    image: sqli-workshop-lab-app:local
-    container_name: sqli-secure-app
-
-    environment:
-      APP_PORT: ${LAB_APP_PORT:-8081}
-      APP_MODE: secure
-      DB_HOST: ${LAB_DB_HOST}
-      DB_PORT: ${LAB_DB_PORT}
-      DB_NAME: ${LAB_DB_NAME}
-      DB_USER: ${LAB_DB_USER}
-      DB_PASSWORD: ${LAB_DB_PASSWORD}
-
-    networks:
-      - scanner_net
-      - lab_net
-
+  dvwa-init:
+    image: ghcr.io/digininja/dvwa:latest
+    environment: *dvwa-environment
+    entrypoint: [php, /initialize.php]
+    volumes:
+      - ./infrastructure/dvwa/initialize.php:/initialize.php:ro
+    networks: [scanner_net, dvwa_net]
     depends_on:
-      lab-db:
+      dvwa:
         condition: service_healthy
-
-    healthcheck:
-      test:
-        - CMD
-        - wget
-        - "-q"
-        - "-O"
-        - /dev/null
-        - http://localhost:8081/health
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-
-    restart: unless-stopped
-
-    security_opt:
-      - no-new-privileges:true
+    restart: "no"
+    security_opt: [no-new-privileges:true]
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-
+    build: ./backend
     image: sqli-workshop-backend:local
     container_name: sqli-backend
-
     environment:
       SCANNER_DB_HOST: ${SCANNER_DB_HOST}
       SCANNER_DB_PORT: ${SCANNER_DB_PORT}
       SCANNER_DB_NAME: ${SCANNER_DB_NAME}
       SCANNER_DB_USER: ${SCANNER_DB_USER}
       SCANNER_DB_PASSWORD: ${SCANNER_DB_PASSWORD}
-      ALLOWED_EXTERNAL_HOSTS: ${ALLOWED_EXTERNAL_HOSTS:-}
+      DVWA_USERNAME: ${DVWA_USERNAME:-admin}
+      DVWA_PASSWORD: ${DVWA_PASSWORD:-password}
       GIN_MODE: ${GIN_MODE:-release}
-
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
-
-    networks:
-      - public_net
-      - scanner_net
-
+    networks: [public_net, scanner_net]
     depends_on:
       scanner-db:
         condition: service_healthy
-      vulnerable-app:
-        condition: service_healthy
-      secure-app:
-        condition: service_healthy
-
+      dvwa-init:
+        condition: service_completed_successfully
     healthcheck:
-      test:
-        - CMD
-        - wget
-        - "-q"
-        - "-O"
-        - /dev/null
-        - http://127.0.0.1:8080/health
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/health]
       interval: 5s
       timeout: 3s
       retries: 15
       start_period: 15s
-
     restart: unless-stopped
-
-    security_opt:
-      - no-new-privileges:true
+    security_opt: [no-new-privileges:true]
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-
+    build: ./frontend
     image: sqli-workshop-frontend:local
     container_name: sqli-frontend
-
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-3000}:80"
-
-    networks:
-      - public_net
-
+    networks: [public_net]
     depends_on:
       backend:
         condition: service_healthy
-
     healthcheck:
-      test:
-        - CMD-SHELL
-        - 'CONTAINER_IP=$$(hostname -i | cut -d " " -f 1); wget -q -O /dev/null "http://$${CONTAINER_IP}/" || exit 1'
+      test: [CMD-SHELL, 'CONTAINER_IP=$$(hostname -i | cut -d " " -f 1); wget -q -O /dev/null "http://$${CONTAINER_IP}/" || exit 1']
       interval: 5s
       timeout: 3s
       retries: 15
       start_period: 10s
-
     restart: unless-stopped
-
-    security_opt:
-      - no-new-privileges:true
+    security_opt: [no-new-privileges:true]
 
 networks:
+  dvwa_access_net:
+    name: sqli-dvwa-access-net
+    driver: bridge
   public_net:
     name: sqli-public-net
     driver: bridge
-
   scanner_net:
     name: sqli-scanner-net
     driver: bridge
     internal: true
-
-  lab_net:
-    name: sqli-lab-net
+  dvwa_net:
+    name: sqli-dvwa-net
     driver: bridge
     internal: true
 
 volumes:
   scanner_db_data:
     name: sqli-scanner-db-data
-
-  lab_db_data:
-    name: sqli-lab-db-data
+  dvwa_db_data:
+    name: sqli-dvwa-db-data
