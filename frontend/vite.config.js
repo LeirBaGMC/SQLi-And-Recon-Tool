@@ -1,5 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import process from "node:process";
+
+const backendTarget = process.env.BACKEND_PROXY_URL || "http://127.0.0.1:8080";
 
 export default defineConfig({
   plugins: [react()],
@@ -10,13 +13,13 @@ export default defineConfig({
 
     proxy: {
       "/api": {
-        target: "http://backend:8080",
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
       },
 
       "/health/backend": {
-        target: "http://backend:8080",
+        target: backendTarget,
         changeOrigin: true,
         secure: false,
         rewrite: () => "/health",
