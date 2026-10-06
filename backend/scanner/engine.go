@@ -13,10 +13,10 @@ const (
 	authorizedCandidateLimit = 8
 )
 
-// RunScan es el punto de entrada principal para ejecutar un análisis con sondas HTTP secuenciales.
+// RunScan ejecuta sondas HTTP y conserva su evidencia antes del estado final.
 func RunScan(scanID string, target policy.AuthorizedTarget, repo *database.Repository) {
 	targetURL, targetMode, dvwaLevel := target.URL, target.Mode, target.DVWALevel
-	log.Printf("[Scanner] Iniciando escaneo %s en modo %s con sondas secuenciales", scanID, targetMode)
+	log.Printf("[Scanner] Iniciando escaneo %s en modo %s", scanID, targetMode)
 
 	if err := repo.UpdateScanStatus(scanID, "RUNNING", "", true, false); err != nil {
 		log.Printf("[Scanner] Error al actualizar estado a RUNNING: %v", err)
@@ -29,7 +29,7 @@ func RunScan(scanID string, target policy.AuthorizedTarget, repo *database.Repos
 	if targetMode == authorizedURLMode {
 		err = runAuthorizedURLDiscovery(scanID, target, repo)
 	} else if targetMode == "dvwa" {
-		err = runDVWAScan(scanID, targetURL, dvwaLevel, repo)
+		err = runDVWAScan(scanID, targetURL, dvwaLevel, target.Workers, repo)
 	} else {
 		err = fmt.Errorf("modo de escaneo no compatible")
 	}

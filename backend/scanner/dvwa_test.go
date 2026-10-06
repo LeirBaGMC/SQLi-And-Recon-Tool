@@ -135,7 +135,7 @@ func TestDVWAMediumLoginTraceDoesNotExposeAuthenticationData(t *testing.T) {
 	}
 }
 
-func TestDVWAPartialFailureKeepsFinishedProbeAndStopsRequests(t *testing.T) {
+func TestDVWAPartialFailureKeepsFinishedProbeAndMarksIncompleteEvidence(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -151,7 +151,7 @@ func TestDVWAPartialFailureKeepsFinishedProbeAndStopsRequests(t *testing.T) {
 	defer server.Close()
 	client, _ := newDVWAClient(server.URL)
 	probes, err := probeDVWA(client, server.URL+"/vulnerabilities/sqli/?id=1&Submit=Submit", "low", nil)
-	if err == nil || requests != 3 || len(probes) != 1 || probes[0].Result != "DETECTED" {
+	if err == nil || requests != 6 || len(probes) != 2 || probes[0].Result != "DETECTED" || probes[1].Result != "INCONCLUSIVE" || probes[1].ObservedRecords != nil {
 		t.Fatalf("partial failure lost completed evidence: requests=%d probes=%v err=%v", requests, probes, err)
 	}
 }

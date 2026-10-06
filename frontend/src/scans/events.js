@@ -22,7 +22,21 @@ export function parsePayloadEvents(events) {
     });
 }
 
+export function parseDVWAMetrics(events) {
+  const event = [...events].reverse().find((item) => item.event_type === "DVWA_METRICS");
+  if (!event) return null;
+  try {
+    const metrics = JSON.parse(event.message);
+    const fields = ["workers", "total_ms", "session_ms", "probe_ms", "http_requests", "inconclusive", "failed_requests"];
+    return fields.every((key) => Number.isFinite(metrics[key]) && metrics[key] >= 0) ? metrics : null;
+  } catch { return null; }
+}
+
 function eventMessage(event) {
+  if (event.event_type === "DVWA_METRICS") {
+    const metrics = parseDVWAMetrics([event]);
+    return metrics ? `Medición: ${metrics.workers} worker(s) · ${metrics.total_ms.toFixed(1)} ms · ${metrics.completed_probes}/6 sondas` : "Medición no disponible";
+  }
   if (
     ["PAYLOAD_EXECUTED", "PAYLOAD_DEMONSTRATION"].includes(event.event_type)
   ) {
@@ -39,7 +53,9 @@ function eventMessage(event) {
               : "no concluyente";
       const records =
         probe.baseline_records != null
-          ? ` · Registros ${probe.baseline_records} / ${probe.true_records ?? "—"} / ${probe.observed_records ?? "—"}`
+          ? probe.true_records != null
+            ? ` · Registros ${probe.baseline_records} / ${probe.true_records} / ${probe.observed_records ?? "—"}`
+            : ` · Registros ${probe.baseline_records} → ${probe.observed_records ?? "—"}`
           : "";
       return `${probe.name}: ${result}${records}`;
     } catch {

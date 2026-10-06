@@ -9,6 +9,8 @@ type ScanRequest struct {
 	URL                    string `json:"url"`
 	AuthorizationConfirmed bool   `json:"authorization_confirmed"`
 	DVWALevel              string `json:"dvwa_level,omitempty"`
+	DVWAVariant            string `json:"dvwa_variant,omitempty"`
+	Workers                int    `json:"workers,omitempty"`
 }
 
 // ScanStatusResponse representa el estado de un escaneo para la API REST.
@@ -60,6 +62,7 @@ type PayloadExecutionEvent struct {
 	CoverageNote       string       `json:"coverage_note,omitempty"`
 	Method             string       `json:"method,omitempty"`
 	RequestBody        string       `json:"request_body,omitempty"`
+	InputURL           string       `json:"input_url,omitempty"`
 	DVWALevel          string       `json:"dvwa_level,omitempty"`
 	BaselineDurationMS *uint64      `json:"baseline_duration_ms,omitempty"`
 	ObservedDurationMS *uint64      `json:"observed_duration_ms,omitempty"`
@@ -83,26 +86,45 @@ type PayloadExecutionEvent struct {
 // LabActivityEvent contains only public request metadata; never auth bodies,
 // cookies, credentials, CSRF tokens or returned user records.
 type LabActivityEvent struct {
-	OriginalValue *string      `json:"original_value,omitempty"`
-	EncodedQuery  string       `json:"encoded_query,omitempty"`
-	FinalURL      string       `json:"final_url,omitempty"`
-	Checks        []ProbeCheck `json:"checks,omitempty"`
-	StepID        string       `json:"step_id"`
-	Stage         string       `json:"stage"`
-	State         string       `json:"state"`
-	Summary       string       `json:"summary"`
-	Level         string       `json:"level"`
-	Method        string       `json:"method,omitempty"`
-	URL           string       `json:"url,omitempty"`
-	Payload       string       `json:"payload,omitempty"`
-	Parameter     string       `json:"parameter,omitempty"`
-	RequestNumber int          `json:"request_number,omitempty"`
-	RequestTotal  int          `json:"request_total,omitempty"`
-	StatusCode    *int         `json:"status_code,omitempty"`
-	DurationMS    *uint64      `json:"duration_ms,omitempty"`
-	ResponseBytes *int         `json:"response_bytes,omitempty"`
-	Records       *int         `json:"records,omitempty"`
-	Detail        string       `json:"detail,omitempty"`
+	ValidationResult string       `json:"validation_result,omitempty"`
+	WorkerID         int          `json:"worker_id,omitempty"`
+	OriginalValue    *string      `json:"original_value,omitempty"`
+	EncodedQuery     string       `json:"encoded_query,omitempty"`
+	FinalURL         string       `json:"final_url,omitempty"`
+	Checks           []ProbeCheck `json:"checks,omitempty"`
+	StepID           string       `json:"step_id"`
+	Stage            string       `json:"stage"`
+	State            string       `json:"state"`
+	Summary          string       `json:"summary"`
+	Level            string       `json:"level"`
+	Method           string       `json:"method,omitempty"`
+	URL              string       `json:"url,omitempty"`
+	Payload          string       `json:"payload,omitempty"`
+	Parameter        string       `json:"parameter,omitempty"`
+	RequestNumber    int          `json:"request_number,omitempty"`
+	RequestTotal     int          `json:"request_total,omitempty"`
+	StatusCode       *int         `json:"status_code,omitempty"`
+	DurationMS       *uint64      `json:"duration_ms,omitempty"`
+	ResponseBytes    *int         `json:"response_bytes,omitempty"`
+	Records          *int         `json:"records,omitempty"`
+	Detail           string       `json:"detail,omitempty"`
+}
+
+// DVWAMetrics uses backend wall clocks; HTTPRequests counts application calls,
+// including authentication and High input POSTs, but excluding redirect hops.
+type DVWAMetrics struct {
+	Level              string  `json:"level"`
+	Workers            int     `json:"workers"`
+	TotalMS            float64 `json:"total_ms"`
+	SessionMS          float64 `json:"session_ms"`
+	ProbeMS            float64 `json:"probe_ms"`
+	EvidenceMS         float64 `json:"evidence_ms"`
+	HTTPRequests       int     `json:"http_requests"`
+	CompletedProbes    int     `json:"completed_probes"`
+	FailedRequests     int     `json:"failed_requests"`
+	HTTPErrorResponses int     `json:"http_error_responses"`
+	Detected           int     `json:"detected"`
+	Inconclusive       int     `json:"inconclusive"`
 }
 
 // ProbeCheck stores measured comparisons, without storing response bodies.
@@ -122,6 +144,7 @@ type CodeComparison struct {
 
 // RemediationReport representa el informe técnico defensivo generado al finalizar el análisis.
 type RemediationReport struct {
+	BlueTeam        *BlueTeamReport  `json:"blue_team,omitempty"`
 	ScanID          string           `json:"scan_id"`
 	Summary         string           `json:"summary"`
 	CWE             string           `json:"cwe"`
@@ -129,4 +152,17 @@ type RemediationReport struct {
 	Recommendations []string         `json:"recommendations"`
 	CodeExamples    []CodeComparison `json:"code_examples"`
 	GeneratedAt     time.Time        `json:"generated_at"`
+}
+
+// Verification is limited to the measured HTTP regression suite, never kernel evidence.
+type BlueTeamReport struct {
+	Level            string `json:"level"`
+	Variant          string `json:"variant"`
+	Verification     string `json:"verification"`
+	VerificationNote string `json:"verification_note"`
+	MeasuredRequests int    `json:"measured_requests"`
+	RejectedInputs   int    `json:"rejected_inputs"`
+	BaselineRecords  int    `json:"baseline_records"`
+	PatchPath        string `json:"patch_path"`
+	SensorStatus     string `json:"sensor_status"`
 }

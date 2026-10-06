@@ -26,8 +26,16 @@ func TestDVWAMediumRemediationUsesPOSTAndNumericContext(t *testing.T) {
 		t.Fatal("expected one DVWA-specific example")
 	}
 	example := report.CodeExamples[0]
-	if !strings.Contains(example.VulnerableCode, "$_POST['id']") || !strings.Contains(example.VulnerableCode, "user_id = $id") || !strings.Contains(example.SecureCode, "INPUT_POST") || strings.Contains(example.SecureCode, "INPUT_GET") {
+	if !strings.Contains(example.VulnerableCode, "$_POST['id']") || !strings.Contains(example.VulnerableCode, "user_id = $id") || !strings.Contains(example.SecureCode, "$_POST['id']") || strings.Contains(example.SecureCode, "$_GET") || !strings.Contains(example.SecureCode, "mysqli_stmt_bind_param") {
 		t.Fatalf("Medium remediation has the wrong input context: %+v", example)
+	}
+}
+
+func TestDVWAHighRemediationValidatesSessionAtSink(t *testing.T) {
+	report := GenerateReport("high", []models.Finding{{Severity: "HIGH"}}, "DVWA · SQL Injection (High)")
+	example := report.CodeExamples[0]
+	if !strings.Contains(example.VulnerableCode, "$_SESSION['id']") || !strings.Contains(example.SecureCode, "$_SESSION['workshop_fixed_id']") || !strings.Contains(example.SecureCode, "filter_var($input") || !strings.Contains(example.SecureCode, "? LIMIT 1") {
+		t.Fatalf("wrong High remediation: %+v", example)
 	}
 }
 

@@ -1,5 +1,44 @@
 # Limpieza del código activo — 4 de octubre de 2026
 
+## Revisión adicional — 5 de octubre de 2026
+
+Actualización posterior: se retiró la página de práctica por solicitud del usuario.
+Se eliminaron sus archivos HTML/JS/CSS/PHP, su documentación y prueba de integración,
+los objetivos `workshop`/`workshop_safe`, sus sondas y la presentación de contactos.
+Docker ya no monta la página ni ejecuta su seed. El laboratorio conserva DVWA
+Low/Medium y el análisis de URL. Las notas de revisión siguientes describen el
+estado anterior a esta retirada.
+
+Verificación tras la retirada: backend y frontend reconstruidos; cinco servicios
+Docker saludables y `dvwa-init` finalizado con código 0. Frontend, salud del backend
+y login DVWA responden HTTP 200; `/workshop/` responde HTTP 404. Pasan lint, las
+12 pruebas restantes del frontend y `go test ./...` durante el build del backend.
+Las integraciones DVWA Low y Medium completan con dos hallazgos y seis respuestas
+medidas cada una; el flujo URL contra el endpoint de salud local completa con
+siete respuestas medidas. Los volúmenes de datos existentes se conservaron.
+
+- Se eliminaron las cuatro reglas de `.target-name` en `frontend/src/App.css`:
+  ningún componente genera esa clase, incluidas sus variantes para móvil.
+- Se retiraron `target` del preset DVWA y `mode` del preset externo en
+  `frontend/src/scans/targets.js`. No tenían lectores; el hook utiliza
+  `labTarget` y declara explícitamente `authorized_url` para el modo externo.
+- Se eliminó `DiscoverySummary.StartURL` y su asignación en el backend:
+  ningún consumidor ni prueba consultaba el campo. La URL de entrada sigue
+  utilizándose para el descubrimiento.
+- Se revisaron `infrastructure/workshop/index.html`, `app.js` y `style.css`.
+  Todas las clases CSS tienen referencias y todos los selectores JS encuentran
+  su elemento HTML. El análisis de JS no encontró variables sin uso ni código
+  inalcanzable; no se retiraron funciones activas del ejercicio.
+- Se conservaron los cambios locales previos, los respaldos de `legacy/`,
+  las herramientas externas y el material de exposición.
+
+Verificación: lint, build y las 13 pruebas actuales del frontend correctos;
+`node --check` y las reglas `no-unused-vars` y `no-unreachable` correctos para
+el JavaScript del directorio.
+La suite completa del backend pasó con `go test ./...` en un contenedor temporal
+`golang:1.25-alpine`, con el código montado en modo solo lectura. Windows bloqueó
+la ejecución local de dos binarios de pruebas por su política de aplicaciones.
+
 ## Código retirado y motivo
 
 | Pieza | Motivo |

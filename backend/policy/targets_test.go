@@ -7,7 +7,7 @@ import (
 )
 
 func TestDVWALevelPolicy(t *testing.T) {
-	for _, level := range []string{"", "low", "medium", "Medium"} {
+	for _, level := range []string{"", "low", "medium", "Medium", "high", "High"} {
 		target, err := ValidateTarget(TargetRequest{Mode: TargetModeDVWA, Target: "dvwa", DVWALevel: level})
 		if err != nil {
 			t.Fatal(err)
@@ -16,14 +16,47 @@ func TestDVWALevelPolicy(t *testing.T) {
 			if target.DVWALevel != "medium" || strings.Contains(target.URL, "?") || !strings.Contains(target.Name, "Medium") {
 				t.Fatalf("incorrect Medium target: %+v", target)
 			}
+		} else if strings.EqualFold(level, "high") {
+			if target.DVWALevel != "high" || strings.Contains(target.URL, "?") || !strings.Contains(target.Name, "High") {
+				t.Fatalf("incorrect High target: %+v", target)
+			}
 		} else if target.DVWALevel != "low" {
 			t.Fatalf("incorrect default level: %+v", target)
 		}
 	}
-	for _, level := range []string{"high", "impossible", "http://example.com"} {
+	for _, level := range []string{"impossible", "http://example.com"} {
 		if _, err := ValidateTarget(TargetRequest{Mode: TargetModeDVWA, Target: "dvwa", DVWALevel: level}); err == nil {
 			t.Fatalf("unsupported level accepted: %s", level)
 		}
+	}
+}
+
+func TestDVWAWorkerBoundsAndURLScope(t *testing.T) {
+	for _, workers := range []int{0, 1, 2, 4} {
+		target, err := ValidateTarget(TargetRequest{Mode: TargetModeDVWA, Target: "dvwa", Workers: workers})
+		if err != nil || target.Workers < 1 {
+			t.Fatalf("valid worker count rejected: %d %v", workers, err)
+		}
+	}
+	for _, workers := range []int{-1, 3, 5, 100} {
+		if _, err := ValidateTarget(TargetRequest{Mode: TargetModeDVWA, Target: "dvwa", Workers: workers}); err == nil {
+			t.Fatalf("worker bound ignored: %d", workers)
+		}
+	}
+	if _, err := ValidateTarget(TargetRequest{Mode: TargetModeAuthorizedURL, URL: "http://localhost/?id=1", AuthorizationConfirmed: true, Workers: 4}); err == nil {
+		t.Fatal("URL mode silently ignored requested concurrency")
+	}
+}
+
+func TestDVWAPreparedVariantUsesSameLevelAndParameter(t *testing.T) {
+	for _, level := range []string{"low", "medium", "high"} {
+		target, err := ValidateTarget(TargetRequest{Mode: TargetModeDVWA, Target: "dvwa", DVWALevel: level, DVWAVariant: "prepared", Workers: 2})
+		if err != nil || !strings.Contains(target.URL, "/sqli-fixed/") || target.Parameter != "id" || target.DVWALevel != level || !strings.Contains(target.Name, "Corregido") {
+			t.Fatalf("incorrect prepared target: %+v %v", target, err)
+		}
+	}
+	if _, err := ValidateTarget(TargetRequest{Mode: TargetModeDVWA, Target: "dvwa", DVWAVariant: "http://example.com"}); err == nil {
+		t.Fatal("arbitrary variant accepted")
 	}
 }
 

@@ -88,7 +88,7 @@ func TestTextProbeExplainsMutationAndNegativeResult(t *testing.T) {
 			}))
 			defer server.Close()
 			var activity []models.LabActivityEvent
-			events, err := probeAuthorizedCandidateWithTrace(server.Client(), DiscoveryCandidate{URL: server.URL + "?flag=failed", ParameterName: "flag", OriginalValue: "failed"}, "text", 0, 3, func(event models.LabActivityEvent) { activity = append(activity, event) })
+			events, err := probeAuthorizedCandidateWithTrace(server.Client(), DiscoveryCandidate{URL: server.URL + "?flag=failed", ParameterName: "flag", OriginalValue: "failed"}, "text", 0, 3, func(event models.LabActivityEvent) error { activity = append(activity, event); return nil })
 			if err != nil || len(events) != 1 || len(queries) != 3 || queries[2] != "flag=failed%27" {
 				t.Fatalf("queries=%v events=%+v err=%v", queries, events, err)
 			}
@@ -127,7 +127,7 @@ func (f externalTestTransport) RoundTrip(r *http.Request) (*http.Response, error
 func TestAuthorizedTimeoutEmitsFailedRequestWithoutVerdict(t *testing.T) {
 	client := &http.Client{Transport: externalTestTransport(func(*http.Request) (*http.Response, error) { return nil, context.DeadlineExceeded })}
 	var activity []models.LabActivityEvent
-	events, err := probeAuthorizedCandidateWithTrace(client, DiscoveryCandidate{URL: "http://testphp.vulnweb.com/listproducts.php?cat=1", ParameterName: "cat", OriginalValue: "1"}, "candidate-1", 0, 7, func(event models.LabActivityEvent) { activity = append(activity, event) })
+	events, err := probeAuthorizedCandidateWithTrace(client, DiscoveryCandidate{URL: "http://testphp.vulnweb.com/listproducts.php?cat=1", ParameterName: "cat", OriginalValue: "1"}, "candidate-1", 0, 7, func(event models.LabActivityEvent) error { activity = append(activity, event); return nil })
 	if err == nil || !strings.Contains(err.Error(), "tiempo limite") || len(events) != 0 || len(activity) != 2 {
 		t.Fatalf("events=%+v activity=%+v err=%v", events, activity, err)
 	}
@@ -158,7 +158,7 @@ func TestAuthorizedTraceAndPartialEvidence(t *testing.T) {
 		return transport.RoundTrip(request)
 	})
 	var activity []models.LabActivityEvent
-	events, err := probeAuthorizedCandidateWithTrace(client, DiscoveryCandidate{URL: server.URL + "?cat=1", ParameterName: "cat", OriginalValue: "1"}, "candidate-2", 7, 14, func(event models.LabActivityEvent) { activity = append(activity, event) })
+	events, err := probeAuthorizedCandidateWithTrace(client, DiscoveryCandidate{URL: server.URL + "?cat=1", ParameterName: "cat", OriginalValue: "1"}, "candidate-2", 7, 14, func(event models.LabActivityEvent) error { activity = append(activity, event); return nil })
 	if err == nil || len(events) != 1 || events[0].Result != "DETECTED" || events[0].Method != "GET" || events[0].ObservedDurationMS == nil {
 		t.Fatalf("lost completed evidence: %+v err=%v", events, err)
 	}
@@ -171,7 +171,7 @@ func TestDiscoveryInitialFailureIsNotAnEmptySuccess(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusServiceUnavailable) }))
 	defer server.Close()
 	var activity []models.LabActivityEvent
-	candidates, summary, err := discoverCandidates(server.Client(), server.URL, func(event models.LabActivityEvent) { activity = append(activity, event) })
+	candidates, summary, err := discoverCandidates(server.Client(), server.URL, func(event models.LabActivityEvent) error { activity = append(activity, event); return nil })
 	if err == nil || !strings.Contains(err.Error(), "HTTP 503") || len(candidates) != 0 || summary.PagesVisited != 0 || len(activity) != 2 || activity[1].State != "http_error" {
 		t.Fatalf("candidates=%+v summary=%+v activity=%+v err=%v", candidates, summary, activity, err)
 	}
@@ -258,7 +258,7 @@ func TestCustomPortBasicAuthHTTPRequestsDoNotExposeCredentialsInEvidence(t *test
 		t.Fatal(err)
 	}
 	var activity []models.LabActivityEvent
-	events, err := probeAuthorizedCandidateWithTrace(client, DiscoveryCandidate{URL: server.URL + "?cat=1", ParameterName: "cat", OriginalValue: "1"}, "candidate-1", 0, 7, func(event models.LabActivityEvent) { activity = append(activity, event) })
+	events, err := probeAuthorizedCandidateWithTrace(client, DiscoveryCandidate{URL: server.URL + "?cat=1", ParameterName: "cat", OriginalValue: "1"}, "candidate-1", 0, 7, func(event models.LabActivityEvent) error { activity = append(activity, event); return nil })
 	if err != nil || requests != 7 || len(events) != 2 {
 		t.Fatalf("requests=%d events=%d err=%v", requests, len(events), err)
 	}

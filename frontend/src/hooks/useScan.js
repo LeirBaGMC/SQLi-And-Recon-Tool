@@ -1,20 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { FINAL_STATUSES, validateExternalUrl } from "../scans/targets.js";
-import { buildLogEntries, parsePayloadEvents } from "../scans/events.js";
+import { validateExternalUrl } from "../scans/targets.js";
+import { watchScan } from "../scans/polling.js";
+import { buildLogEntries, parsePayloadEvents, parseDVWAMetrics } from "../scans/events.js";
 
 // Own the scan lifecycle, polling and elapsed time; presentation stays in App.
-export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
+export default function useScan({ currentPreset, customUrl, dvwaLevel, dvwaVariant, workers }) {
   const [scanId, setScanId] = useState("");
   const [scanStatus, setScanStatus] = useState(null);
   const [events, setEvents] = useState([]);
   const [report, setReport] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [connectionError, setConnectionError] = useState("");
+  const [pollRevision, setPollRevision] = useState(0);
   const [elapsedMS, setElapsedMS] = useState(null);
+  const [baselineScan, setBaselineScan] = useState(null);
   const startedRef = useRef(0);
   const submissionRef = useRef(false);
   const payloadTests = parsePayloadEvents(events);
+  const metrics = parseDVWAMetrics(events);
   const realTests = payloadTests.filter((test) => !test.isSimulated);
   const detectedCount = realTests.filter(
     (test) => test.result === "DETECTED",
@@ -40,13 +45,19 @@ export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
     logEntries.find((entry) => entry.activity?.request_total)?.activity
       .request_total;
 
-  function resetSession() {
+  function clearCurrentScan() {
     setScanId("");
     setScanStatus(null);
     setEvents([]);
     setReport(null);
     setErrorMessage("");
+    setConnectionError("");
     setElapsedMS(null);
+  }
+
+  function resetSession() {
+    clearCurrentScan();
+    setBaselineScan(null);
   }
 
   useEffect(() => {
@@ -61,52 +72,29 @@ export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
   useEffect(() => {
     if (!isRunning || !scanId) return;
     const controller = new AbortController();
-    const options = { signal: controller.signal, timeout: 15000 };
-    let timer;
-    async function poll() {
-      try {
-        const statusResponse = await axios.get(`/api/scans/${scanId}`, options);
-        const eventsResponse = await axios.get(
-          `/api/scans/${scanId}/events`,
-          options,
-        );
-        if (controller.signal.aborted) return;
-        setScanStatus(statusResponse.data);
-        setEvents(eventsResponse.data.events || []);
-        if (FINAL_STATUSES.includes(statusResponse.data.status)) {
-          if (statusResponse.data.status === "COMPLETED") {
-            const results = await axios.get(
-              `/api/scans/${scanId}/results`,
-              options,
-            );
-            if (controller.signal.aborted) return;
-            setReport(results.data.remediation_report || null);
-          } else
-            setErrorMessage(
-              statusResponse.data.error_message || "El escaneo falló.",
-            );
-          setElapsedMS(performance.now() - startedRef.current);
-          setIsRunning(false);
-        } else timer = setTimeout(poll, 350);
-      } catch (error) {
-        if (axios.isCancel(error) || controller.signal.aborted) return;
+    const stop = watchScan({
+      scanId, client: axios, signal: controller.signal,
+      onStatus: setScanStatus, onEvents: setEvents, onReport: setReport,
+      onConnectionError: setConnectionError,
+      onComplete(status) {
+        if (status.status === "FAILED") {
+          setErrorMessage(status.error_message || "El escaneo falló.");
+        }
         setElapsedMS(performance.now() - startedRef.current);
-        setScanStatus((previous) => ({ ...previous, status: "FAILED" }));
-        setErrorMessage(
-          "No se pudo actualizar el escaneo. Revisa la conexión con el backend.",
-        );
         setIsRunning(false);
-      }
-    }
-    poll();
+      },
+    });
     return () => {
       controller.abort();
-      clearTimeout(timer);
+      stop();
     };
-  }, [isRunning, scanId]);
+  }, [isRunning, scanId, pollRevision]);
 
-  async function handleStartScan(event) {
-    event.preventDefault();
+  function reconnect() {
+    if (scanId && isRunning) setPollRevision((previous) => previous + 1);
+  }
+
+  async function startScan(variant = dvwaVariant) {
     if (submissionRef.current || isRunning || !currentPreset) return;
     if (currentPreset.id === "external") {
       try {
@@ -117,7 +105,11 @@ export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
       }
     }
     submissionRef.current = true;
-    resetSession();
+    if (currentPreset.id === "dvwa" && variant === "prepared" && isDone &&
+        report?.blue_team?.variant === "vulnerable") {
+      setBaselineScan({ scan_id: scanId, level: dvwaLevel, workers, detected: detectedCount });
+    } else if (variant !== "prepared") setBaselineScan(null);
+    clearCurrentScan();
     startedRef.current = performance.now();
     setElapsedMS(0);
     setIsRunning(true);
@@ -131,8 +123,10 @@ export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
             }
           : {
               mode: currentPreset.mode,
-              target: currentPreset.target,
+              target: "dvwa",
               dvwa_level: dvwaLevel,
+              dvwa_variant: variant,
+              workers,
             };
       const response = await axios.post("/api/scans", body, { timeout: 15000 });
       const id = response.data.scan_id || response.data.id;
@@ -150,6 +144,15 @@ export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
     }
   }
 
+  function handleStartScan(event) {
+    event.preventDefault();
+    return startScan();
+  }
+
+  function verifyCorrection() {
+    return startScan("prepared");
+  }
+
   return {
     scanId,
     scanStatus,
@@ -157,7 +160,11 @@ export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
     report,
     isRunning,
     errorMessage,
+    connectionError,
+    reconnect,
     elapsedMS,
+    metrics,
+    baselineScan,
     payloadTests,
     detectedCount,
     isDone,
@@ -167,5 +174,6 @@ export default function useScan({ currentPreset, customUrl, dvwaLevel }) {
     totalRequests,
     resetSession,
     handleStartScan,
+    verifyCorrection,
   };
 }

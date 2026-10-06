@@ -9,11 +9,12 @@ import { buildSync } from "esbuild";
 
 const bundle = buildSync({
   stdin: {
-    contents: `export { parsePayloadEvents, buildLogEntries } from '../src/scans/events.js';
+    contents: `export { parsePayloadEvents, buildLogEntries, parseDVWAMetrics } from '../src/scans/events.js';
       export { validateExternalUrl } from '../src/scans/targets.js';
       export { default as FindingCard } from '../src/components/FindingCard.jsx';
       export { LogRow } from '../src/components/EventStreamConsole.jsx';
-      export { StatusBanner, ScanError } from '../src/components/ScanStatus.jsx';`,
+      export { StatusBanner, ScanError, ScanConnectionNotice } from '../src/components/ScanStatus.jsx';
+      export { default as RemediationSection } from '../src/components/RemediationSection.jsx';`,
     resolveDir: fileURLToPath(new URL(".", import.meta.url)),
   },
   bundle: true,
@@ -32,15 +33,84 @@ vm.createContext(context);
 vm.runInContext(bundle.outputFiles[0].text, context);
 const {
   parsePayloadEvents,
+  parseDVWAMetrics,
   FindingCard,
   StatusBanner,
   buildLogEntries,
   LogRow,
   ScanError,
+  ScanConnectionNotice,
   validateExternalUrl,
+  RemediationSection,
 } = context.module.exports;
 const render = (Component, props) =>
   renderToStaticMarkup(React.createElement(Component, props));
+
+test("reconnecting keeps connection problems separate from SQL and offers a same-scan retry", () => {
+  const banner = render(StatusBanner, { status: "COMPLETED", isRunning: true, isDone: true, detectedCount: 0, isInconclusive: false, isReconnecting: true });
+  assert.match(banner, /Esperando conexión con el backend/);
+  assert.doesNotMatch(banner, /SIN HALLAZGOS|Escaneo interrumpido/);
+  const notice = render(ScanConnectionNotice, { message: "Se conserva el mismo escaneo", onReconnect() {} });
+  assert.match(notice, /role="status"/);
+  assert.match(notice, /Volver a consultar/);
+});
+
+test("blue team distinguishes unverified correction from an HTTP retest and exposes the eBPF next action", () => {
+  const props = { report: { blue_team: {
+    level: "medium", variant: "vulnerable", verification: "PATCH_AVAILABLE", verification_note: "Reprueba pendiente",
+    patch_path: "infrastructure/dvwa/fixed/index.php", sensor_status: "NOT_CONNECTED",
+  } } };
+  let html = render(RemediationSection, props);
+  assert.match(html, /Probar variante corregida/);
+  assert.match(html, /Preparar observabilidad eBPF/);
+  assert.match(html, /Sensor no conectado/);
+  assert.doesNotMatch(html, /Reprueba HTTP aprobada/);
+  props.report.blue_team = { ...props.report.blue_team, variant: "prepared", verification: "INCONCLUSIVE", measured_requests: 0, rejected_inputs: 0, baseline_records: 0 };
+  html = render(RemediationSection, props);
+  assert.match(html, /Corrección sin verificar/);
+  assert.match(html, /0\/6/);
+  assert.doesNotMatch(html, /Probar variante corregida/);
+  html = render(RemediationSection, { ...props, scanId: "after", baselineScan: { detected: 2, scan_id: "before" } });
+  assert.match(html, /Sin veredicto/);
+  assert.match(html, /Repetir verificación/);
+  assert.doesNotMatch(html, /Sin detección en estas sondas/);
+  props.report.blue_team.verification = "HTTP_RETEST_PASSED";
+  html = render(RemediationSection, { ...props, scanId: "after", baselineScan: { detected: 2, scan_id: "before" } });
+  assert.match(html, /Reprueba HTTP aprobada/);
+  assert.match(html, /Ver plan eBPF/);
+  assert.match(html, /aria-current="step"/);
+  assert.match(html, /Antes y después/);
+  assert.match(html, /before/);
+  assert.match(html, /after/);
+  assert.match(html, /sin evidencia|Evidencia actual: HTTP/);
+});
+
+test("concurrent sessions and High input traces remain separate when responses arrive out of order", () => {
+  const activity = (step_id, state, id) => ({ id, event_type: "LAB_ACTIVITY", message: JSON.stringify({ step_id, state, summary: step_id, worker_id: 2 }) });
+  const entries = buildLogEntries([
+    activity("worker-1-login-session", "running", 1),
+    activity("worker-2-login-session", "completed", 2),
+    activity("input-3", "completed", 3),
+    activity("probe-3", "running", 4),
+    activity("worker-1-login-session", "completed", 5),
+    activity("probe-3", "completed", 6),
+  ]);
+  assert.equal(entries.length, 4);
+  assert.equal(entries.every((entry) => entry.activity.state === "completed"), true);
+  assert.match(render(LogRow, { entry: entries[0] }), /Worker 2/);
+  const html = render(FindingCard, { test: { result: "DETECTED", method: "GET", input_url: "http://dvwa/vulnerabilities/sqli/session-input.php", request_body: "id=1", coverage_note: "High: POST seguido de GET en la misma sesión" } });
+  assert.match(html, /POST http:\/\/dvwa\/vulnerabilities\/sqli\/session-input.php: id=1/);
+  assert.match(html, /POST seguido de GET/);
+});
+
+test("performance evidence uses backend metrics and rejects missing or malformed clocks", () => {
+  const event = { event_type: "DVWA_METRICS", message: JSON.stringify({ workers: 4, total_ms: 35.5, session_ms: 15, probe_ms: 18, http_requests: 28, completed_probes: 6, inconclusive: 0, failed_requests: 0 }) };
+  assert.equal(parseDVWAMetrics([event]).total_ms, 35.5);
+  assert.match(buildLogEntries([event])[0].label, /4 worker\(s\).*35.5 ms.*6\/6 sondas/);
+  assert.equal(parseDVWAMetrics([{ ...event, message: "{}" }]), null);
+  assert.equal(parseDVWAMetrics([{ ...event, message: "bad JSON" }]), null);
+  assert.equal(parseDVWAMetrics([]), null);
+});
 
 test("URL validation accepts domains, IPs, local hosts, credentials and custom ports", () => {
   assert.equal(

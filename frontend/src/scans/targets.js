@@ -1,9 +1,8 @@
 export const TARGET_PRESETS = [
-  { id: "dvwa", title: "Laboratorio", mode: "dvwa", target: "dvwa" },
+  { id: "dvwa", title: "Laboratorio", mode: "dvwa" },
   {
     id: "external",
-    title: "Inyección a una página real",
-    mode: "authorized_url",
+    title: "URL autorizada",
   },
 ];
 export const FINAL_STATUSES = ["COMPLETED", "FAILED"];

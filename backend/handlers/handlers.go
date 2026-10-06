@@ -49,6 +49,8 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 		URL:                    request.URL,
 		AuthorizationConfirmed: request.AuthorizationConfirmed,
 		DVWALevel:              request.DVWALevel,
+		DVWAVariant:            request.DVWAVariant,
+		Workers:                request.Workers,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -85,7 +87,7 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 
 	h.repo.CreateEventWithoutInterrupting(scanID, "SCAN_QUEUED", "El escaneo fue encolado para su ejecucion")
 
-	// La respuesta HTTP no espera al escaneo; cada escaneo ejecuta sondas secuenciales.
+	// La respuesta HTTP no espera al escaneo.
 	go scanner.RunScan(scanID, target, h.repo)
 
 	c.JSON(http.StatusAccepted, gin.H{
@@ -98,6 +100,8 @@ func (h *Handler) StartScanHandler(c *gin.Context) {
 		"original_value": target.OriginalValue,
 		"status":         "QUEUED",
 		"dvwa_level":     target.DVWALevel,
+		"dvwa_variant":   target.DVWAVariant,
+		"workers":        target.Workers,
 	})
 }
 
@@ -122,7 +126,7 @@ func (h *Handler) GetScanStatusHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, scan)
 }
 
-// GetScanResultsHandler retorna los hallazgos y el informe de remediación Purple Team.
+// GetScanResultsHandler retorna los hallazgos y el informe defensivo Blue Team.
 func (h *Handler) GetScanResultsHandler(c *gin.Context) {
 	scanID := strings.TrimSpace(c.Param("id"))
 	if scanID == "" {
@@ -146,7 +150,12 @@ func (h *Handler) GetScanResultsHandler(c *gin.Context) {
 		return
 	}
 
-	report := remediation.GenerateReport(scanID, findings, scan.TargetName)
+	events, err := h.repo.GetScanEventsByScanID(scanID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo consultar la evidencia de correccion"})
+		return
+	}
+	report := remediation.GenerateScanReport(scan, findings, events)
 
 	c.JSON(http.StatusOK, gin.H{
 		"scan_id":            scanID,

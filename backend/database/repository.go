@@ -180,6 +180,29 @@ func (r *Repository) CreateScanEvent(scanID, eventType, message string) error {
 	return err
 }
 
+// Commit a bounded batch together; callers must propagate any persistence error.
+func (r *Repository) CreateScanEvents(scanID, eventType string, messages []string) error {
+	if len(messages) == 0 {
+		return nil
+	}
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.Prepare("INSERT INTO scan_events (scan_id, event_type, message, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, message := range messages {
+		if _, err := stmt.Exec(scanID, eventType, message); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // CreateEventWithoutInterrupting registra un evento sin interrumpir la ejecución si ocurre un error.
 func (r *Repository) CreateEventWithoutInterrupting(scanID, eventType, message string) {
 	if err := r.CreateScanEvent(scanID, eventType, message); err != nil {

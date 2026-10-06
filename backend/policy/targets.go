@@ -14,8 +14,10 @@ const (
 )
 
 type AuthorizedTarget struct {
+	Workers       int
 	BasicAuth     *url.Userinfo `json:"-"`
 	DVWALevel     string
+	DVWAVariant   string
 	Mode          string
 	Name          string
 	URL           string
@@ -25,7 +27,9 @@ type AuthorizedTarget struct {
 }
 
 type TargetRequest struct {
+	Workers                int
 	DVWALevel              string
+	DVWAVariant            string
 	Mode                   string
 	Target                 string
 	URL                    string
@@ -56,17 +60,44 @@ func ValidateTarget(
 		if level == "" {
 			level = "low"
 		}
-		if level != "low" && level != "medium" {
-			return AuthorizedTarget{}, fmt.Errorf("el laboratorio admite los niveles Low y Medium")
+		if level != "low" && level != "medium" && level != "high" {
+			return AuthorizedTarget{}, fmt.Errorf("el laboratorio admite los niveles Low, Medium y High")
 		}
+		workers := request.Workers
+		if workers == 0 {
+			workers = 1
+		}
+		if workers != 1 && workers != 2 && workers != 4 {
+			return AuthorizedTarget{}, fmt.Errorf("workers debe ser 1, 2 o 4")
+		}
+		target.Workers = workers
 		target.DVWALevel = level
+		variant := strings.ToLower(strings.TrimSpace(request.DVWAVariant))
+		if variant == "" {
+			variant = "vulnerable"
+		}
+		if variant != "vulnerable" && variant != "prepared" {
+			return AuthorizedTarget{}, fmt.Errorf("variante DVWA no compatible")
+		}
+		target.DVWAVariant = variant
 		if level == "medium" {
 			target.Name = "DVWA · SQL Injection (Medium)"
 			target.URL = "http://dvwa/vulnerabilities/sqli/"
 		}
+		if level == "high" {
+			target.Name = "DVWA · SQL Injection (High)"
+			target.URL = "http://dvwa/vulnerabilities/sqli/"
+		}
+		if variant == "prepared" {
+			target.URL = strings.Replace(target.URL, "/sqli/", "/sqli-fixed/", 1)
+			target.Name += " · Corregido"
+		}
 		return target, nil
 
 	case TargetModeAuthorizedURL:
+		if request.Workers != 0 && request.Workers != 1 {
+			return AuthorizedTarget{}, fmt.Errorf("la concurrencia configurable solo esta disponible en DVWA")
+		}
 		return validateExternalTarget(
 			request,
 		)

@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-04T22:13:39.176130+00:00",
+  "created_at": "2026-10-05T14:38:50.033959+00:00",
   "target": "http://127.0.0.1:8000/vulnerabilities/sqli/?id=1&Submit=Submit",
   "dvwa_security": "low",
   "sqlmap_version": "1.10.9.32#dev",
@@ -11,15 +11,15 @@
     {
       "run": 1,
       "tool": "SQLi Studio",
-      "seconds": 0.1755,
+      "seconds": 0.3153,
       "boolean_detected": true,
       "probes": 2,
-      "scan_id": "fbca840f2fe8186027ac30c4096a95e4"
+      "scan_id": "6179c0aa08322a4da3be36e259f7baa9"
     },
     {
       "run": 1,
       "tool": "sqlmap",
-      "seconds": 5.5795,
+      "seconds": 3.8657,
       "boolean_detected": true,
       "detection_http_requests": 163,
       "exit_code": 0
@@ -27,7 +27,7 @@
     {
       "run": 2,
       "tool": "sqlmap",
-      "seconds": 5.5251,
+      "seconds": 3.6453,
       "boolean_detected": true,
       "detection_http_requests": 163,
       "exit_code": 0
@@ -35,30 +35,30 @@
     {
       "run": 2,
       "tool": "SQLi Studio",
-      "seconds": 0.1963,
+      "seconds": 0.2951,
       "boolean_detected": true,
       "probes": 2,
-      "scan_id": "2cba434d0fd340b20dc268d3684d2243"
+      "scan_id": "bf7feec874c22a9fa488c40fed075837"
     },
     {
       "run": 3,
       "tool": "SQLi Studio",
-      "seconds": 0.1777,
+      "seconds": 0.2819,
       "boolean_detected": true,
       "probes": 2,
-      "scan_id": "b9ed68426a677368d0662d97f66f88f5"
+      "scan_id": "1640292d8f617f3168f95f7829db04c5"
     },
     {
       "run": 3,
       "tool": "sqlmap",
-      "seconds": 5.4615,
+      "seconds": 3.7533,
       "boolean_detected": true,
       "detection_http_requests": 163,
       "exit_code": 0
     }
   ],
   "medians_seconds": {
-    "SQLi Studio": 0.1777,
-    "sqlmap": 5.5251
+    "SQLi Studio": 0.2951,
+    "sqlmap": 3.7533
   }
 }

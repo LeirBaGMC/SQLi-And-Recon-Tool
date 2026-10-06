@@ -45,6 +45,7 @@ export function LogRow({ entry }) {
       <span className="log-content">
         <span className="log-label">{entry.label}</span>
         <span className="log-meta">
+          {activity?.worker_id && <span>Worker {activity.worker_id}</span>}
           {method && <span>{method}</span>}
           {status != null && <span>HTTP {status}</span>}
           {duration != null && <span>{duration} ms</span>}
@@ -88,6 +89,7 @@ export function LogRow({ entry }) {
         {probe?.request_body && !simulated && (
           <p>
             <span>Cuerpo POST</span>
+            {probe.input_url && <code>{probe.input_url}</code>}
             <code>{probe.request_body}</code>
           </p>
         )}
