@@ -45,6 +45,8 @@ services:
   dvwa:
     image: ghcr.io/digininja/dvwa:latest
     container_name: sqli-dvwa
+    volumes:
+      - ./infrastructure/dvwa/fixed:/var/www/html/vulnerabilities/sqli-fixed:ro
     environment: &dvwa-environment
       DB_SERVER: dvwa-db
       DB_DATABASE: dvwa
@@ -92,6 +94,7 @@ services:
       DVWA_USERNAME: ${DVWA_USERNAME:-admin}
       DVWA_PASSWORD: ${DVWA_PASSWORD:-password}
       GIN_MODE: ${GIN_MODE:-release}
+      SCANNER_ALLOWED_ORIGINS: http://localhost:${FRONTEND_PORT:-3000},http://127.0.0.1:${FRONTEND_PORT:-3000}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     networks: [public_net, scanner_net]

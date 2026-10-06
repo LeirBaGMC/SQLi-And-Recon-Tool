@@ -16,7 +16,7 @@ import (
 	"github.com/LeirBaGMC/sql-scanner/policy"
 )
 
-type httpObserver func(models.LabActivityEvent)
+type httpObserver func(models.LabActivityEvent) error
 
 func externalRequestError(err error) error {
 	var dns *net.DNSError
@@ -32,18 +32,23 @@ func externalRequestError(err error) error {
 }
 
 func repositoryHTTPObserver(scanID string, repo *database.Repository) httpObserver {
-	return func(event models.LabActivityEvent) {
+	return func(event models.LabActivityEvent) error {
 		message, err := json.Marshal(event)
-		if err == nil {
-			repo.CreateEventWithoutInterrupting(scanID, "HTTP_ACTIVITY", string(message))
+		if err != nil {
+			return fmt.Errorf("no se pudo serializar la evidencia HTTP: %w", err)
 		}
+		if err := repo.CreateScanEvent(scanID, "HTTP_ACTIVITY", string(message)); err != nil {
+			return fmt.Errorf("no se pudo conservar la evidencia HTTP: %w", err)
+		}
+		return nil
 	}
 }
 
-func observeHTTP(observe httpObserver, event models.LabActivityEvent) {
+func observeHTTP(observe httpObserver, event models.LabActivityEvent) error {
 	if observe != nil {
-		observe(event)
+		return observe(event)
 	}
+	return nil
 }
 
 // Each request, including redirects, remains on the authorized origin.
@@ -150,15 +155,16 @@ func probeAuthorizedCandidateWithTrace(client *http.Client, candidate DiscoveryC
 		step := models.LabActivityEvent{StepID: fmt.Sprintf("%s-probe-%d", prefix, number), Stage: "probe", State: "running", Summary: summary, Method: http.MethodGet, URL: rawURL, Parameter: candidate.ParameterName, Payload: value, RequestNumber: offset + number, RequestTotal: total}
 		parsed, _ := url.Parse(rawURL)
 		step.OriginalValue, step.EncodedQuery = &candidate.OriginalValue, parsed.RawQuery
-		observeHTTP(observe, step)
+		if err := observeHTTP(observe, step); err != nil {
+			return requestResult{}, err
+		}
 		started := time.Now()
 		result, err := performRequest(client, rawURL)
 		if err != nil {
 			duration := uint64(time.Since(started).Milliseconds())
 			step.State, step.DurationMS, step.Detail = "failed", &duration, err.Error()
 			step.Detail += ". No se obtuvo una respuesta completa; no se puede comparar el contenido ni emitir un veredicto con esta petición."
-			observeHTTP(observe, step)
-			return result, externalRequestError(err)
+			return result, errors.Join(externalRequestError(err), observeHTTP(observe, step))
 		}
 		step.State = "completed"
 		if result.StatusCode >= 400 {
@@ -172,8 +178,7 @@ func probeAuthorizedCandidateWithTrace(client *http.Client, candidate DiscoveryC
 		} else {
 			reference = &result
 		}
-		observeHTTP(observe, step)
-		return result, nil
+		return result, observeHTTP(observe, step)
 	}
 	baseline, err := request(candidate.OriginalValue, "Conectar al objetivo · Linea base")
 	if err != nil {
@@ -221,8 +226,8 @@ func probeAuthorizedCandidateWithTrace(client *http.Client, candidate DiscoveryC
 	// Boolean pairs apply to numeric parameters; text inputs require a different context.
 	if !isNumericValue(candidate.OriginalValue) {
 		events[0].CoverageNote = "Comparación booleana omitida: el valor original es texto; este motor aplica pares booleanos únicamente a valores numéricos."
-		observeHTTP(observe, models.LabActivityEvent{StepID: prefix + "-boolean-skipped", Stage: "coverage", State: "skipped", Summary: "Comparación booleana omitida · " + candidate.ParameterName, Parameter: candidate.ParameterName, OriginalValue: &candidate.OriginalValue, Detail: events[0].CoverageNote})
-		return events, nil
+		err := observeHTTP(observe, models.LabActivityEvent{StepID: prefix + "-boolean-skipped", Stage: "coverage", State: "skipped", Summary: "Comparación booleana omitida · " + candidate.ParameterName, Parameter: candidate.ParameterName, OriginalValue: &candidate.OriginalValue, Detail: events[0].CoverageNote})
+		return events, err
 	}
 	trueValue, falseValue := candidate.OriginalValue+" AND 1=1", candidate.OriginalValue+" AND 1=2"
 	trueProbe, err := request(trueValue, "Condicion verdadera · Repeticion 1")
@@ -290,7 +295,13 @@ func executeAuthorizedProbes(scanID string, candidate DiscoveryCandidate, creden
 
 func saveHTTPProbeEvents(scanID string, events []models.PayloadExecutionEvent, repo *database.Repository) error {
 	for _, event := range events {
-		emitPayloadEvent(repo, scanID, "PAYLOAD_EXECUTED", event)
+		message, err := json.Marshal(event)
+		if err != nil {
+			return err
+		}
+		if err := repo.CreateScanEvent(scanID, "PAYLOAD_EXECUTED", string(message)); err != nil {
+			return fmt.Errorf("no se pudo conservar la evidencia de la sonda: %w", err)
+		}
 		if event.Result == "INCONCLUSIVE" {
 			repo.CreateEventWithoutInterrupting(scanID, "SCAN_INCONCLUSIVE", event.Reason)
 		}

@@ -44,7 +44,7 @@ if err != nil {
 }
 query := "SELECT id, name, price FROM products WHERE id = ? AND is_active = TRUE"
 rows, err := db.QueryContext(ctx, query, id)`,
-			Explanation: "Al validar el tipo numérico y utilizar '?', el driver MySQL envía el comando y el valor en paquetes separados, neutralizando cualquier intento de inyección.",
+			Explanation: "La validación controla el tipo esperado y el parámetro '?' mantiene el valor separado de la estructura SQL mediante la API del driver.",
 		},
 		{
 			Language: "PHP (PDO)",
@@ -77,20 +77,14 @@ cursor.execute(query, (int(user_input), True))`,
 	}
 
 	if targetName == "dvwa" || strings.HasPrefix(targetName, "DVWA") {
-		for _, example := range codeExamples {
-			if example.Language == "PHP (PDO)" {
-				example.Title = "Remediacion del modulo SQL Injection de DVWA"
-				example.VulnerableCode = "$id = $_GET['id'];\n$sql = \"SELECT first_name, last_name FROM users WHERE user_id = '$id'\";\n$result = mysqli_query($connection, $sql);"
-				example.SecureCode = "$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);\nif ($id === false || $id === null) {\n    throw new InvalidArgumentException('ID invalido');\n}\n$stmt = $pdo->prepare('SELECT first_name, last_name FROM users WHERE user_id = :id');\n$stmt->execute(['id' => $id]);\n$rows = $stmt->fetchAll();"
-				if strings.Contains(targetName, "(Medium)") {
-					example.VulnerableCode = "$id = mysqli_real_escape_string($connection, $_POST['id']);\n$sql = \"SELECT first_name, last_name FROM users WHERE user_id = $id\";\n$result = mysqli_query($connection, $sql);"
-					example.SecureCode = strings.Replace(example.SecureCode, "INPUT_GET", "INPUT_POST", 1)
-					example.Explanation = "Medium recibe id por POST. Escapar caracteres no protege una expresión numérica concatenada; valida el identificador y usa parámetros SQL."
-				}
-				codeExamples = []models.CodeComparison{example}
-				break
-			}
+		level := "low"
+		if strings.Contains(targetName, "(Medium)") {
+			level = "medium"
 		}
+		if strings.Contains(targetName, "(High)") {
+			level = "high"
+		}
+		codeExamples = []models.CodeComparison{dvwaCodeExample(level)}
 	}
 	return &models.RemediationReport{
 		ScanID:          scanID,

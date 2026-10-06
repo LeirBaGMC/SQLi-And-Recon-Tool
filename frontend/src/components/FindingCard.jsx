@@ -27,12 +27,12 @@ export default function FindingCard({ test }) {
               : "SIN VEREDICTO"}
         </span>
       </div>
-      <code className="payload">{test.payload || "Sin payload reportado"}</code>
       {test.result !== "DETECTED" && test.reason && (
         <p className="finding-reason">{test.reason}</p>
       )}
       <details>
         <summary>Ver evidencia</summary>
+        <code className="payload">{test.payload || "Sin payload reportado"}</code>
         {(isDetected || !test.reason) && (
           <p>{test.reason || "Sin explicación reportada."}</p>
         )}
@@ -74,12 +74,12 @@ export default function FindingCard({ test }) {
                 <dt>Registros base</dt>
                 <dd>{test.baseline_records}</dd>
               </div>
-              <div>
+              {test.true_records != null && <div>
                 <dt>Condición verdadera</dt>
                 <dd>{test.true_records ?? "Sin datos"}</dd>
-              </div>
+              </div>}
               <div>
-                <dt>Condición falsa</dt>
+                <dt>{test.true_records != null ? "Condición falsa" : "Registros observados"}</dt>
                 <dd>{test.observed_records ?? "Sin datos"}</dd>
               </div>
             </>
@@ -89,7 +89,7 @@ export default function FindingCard({ test }) {
           {test.tested_url || "Sin URL reportada"}
         </code>
         {test.request_body && (
-          <code className="request-url">POST: {test.request_body}</code>
+          <code className="request-url">POST{test.input_url ? ` ${test.input_url}` : ""}: {test.request_body}</code>
         )}
       </details>
     </article>

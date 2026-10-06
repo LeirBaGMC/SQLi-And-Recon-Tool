@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TARGET_PRESETS } from "./scans/targets.js";
 import useScan from "./hooks/useScan.js";
-import { ModeIcon, ScanError, StatusBanner } from "./components/ScanStatus.jsx";
+import { ModeIcon, ScanConnectionNotice, ScanError, StatusBanner } from "./components/ScanStatus.jsx";
 import EventStreamConsole from "./components/EventStreamConsole.jsx";
 import FindingCard from "./components/FindingCard.jsx";
 import RemediationSection from "./components/RemediationSection.jsx";
@@ -11,6 +11,8 @@ export default function App() {
   const [selectedPresetId, setSelectedPresetId] = useState(null);
   const [customUrl, setCustomUrl] = useState("");
   const [dvwaLevel, setDVWALevel] = useState("medium");
+  const [workers, setWorkers] = useState(1);
+  const [dvwaVariant, setDVWAVariant] = useState("vulnerable");
   const currentPreset = TARGET_PRESETS.find(
     (preset) => preset.id === selectedPresetId,
   );
@@ -21,7 +23,11 @@ export default function App() {
     report,
     isRunning,
     errorMessage,
+    connectionError,
+    reconnect,
     elapsedMS,
+    metrics,
+    baselineScan,
     payloadTests,
     detectedCount,
     isDone,
@@ -31,7 +37,8 @@ export default function App() {
     totalRequests,
     resetSession,
     handleStartScan,
-  } = useScan({ currentPreset, customUrl, dvwaLevel });
+    verifyCorrection,
+  } = useScan({ currentPreset, customUrl, dvwaLevel, dvwaVariant, workers });
 
   return (
     <div className="studio-app">
@@ -50,7 +57,7 @@ export default function App() {
             disabled={isRunning}
             onClick={resetSession}
           >
-            Limpiar
+            Nueva prueba
           </button>
         )}
       </header>
@@ -76,7 +83,7 @@ export default function App() {
               <span className="mode-icon">
                 <ModeIcon mode={preset.id} />
               </span>
-              <span className="mode-label">{preset.title}</span>
+              <span className="mode-label">{preset.title}<small>{preset.id === "dvwa" ? "Practica con DVWA y comprueba la corrección." : "Analiza una aplicación para la que tienes permiso."}</small></span>
               <span className="mode-arrow" aria-hidden="true">
                 ↗
               </span>
@@ -85,6 +92,16 @@ export default function App() {
         </nav>
         {currentPreset && (
           <>
+            <div className="workspace-heading">
+              <div>
+                <p className="eyebrow">{selectedPresetId === "dvwa" ? "Laboratorio · Blue team" : "Análisis HTTP"}</p>
+                <h1>{selectedPresetId === "dvwa" ? "Detectar, corregir y verificar" : "Analizar una URL autorizada"}</h1>
+                <p>{selectedPresetId === "dvwa"
+                  ? "Compara DVWA vulnerable con la corrección y revisa la evidencia de cada prueba."
+                  : "Revisa los parámetros de una aplicación para la que tienes autorización."}</p>
+              </div>
+              <span className="scope-badge">Evidencia HTTP</span>
+            </div>
             <form className="scan-toolbar" onSubmit={handleStartScan}>
               {selectedPresetId === "external" ? (
                 <div className="url-field">
@@ -113,7 +130,7 @@ export default function App() {
                     <span className="target-icon">
                       <ModeIcon mode="dvwa" />
                     </span>
-                    <span className="target-name">
+                    <span className="lab-name">
                       DVWA <span>SQL Injection</span>
                     </span>
                   </span>
@@ -130,8 +147,30 @@ export default function App() {
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
+                      <option value="high">High</option>
                     </select>
                   </label>
+                  <label className="level-control" htmlFor="dvwa-variant">
+                    Variante
+                    <select id="dvwa-variant" value={dvwaVariant} disabled={isRunning}
+                      onChange={(event) => { setDVWAVariant(event.target.value); resetSession(); }}>
+                      <option value="vulnerable">Vulnerable</option>
+                      <option value="prepared">Corregida · SQL preparado</option>
+                    </select>
+                  </label>
+                  <details className="advanced-config">
+                    <summary>Opciones · {workers} worker{workers > 1 ? "s" : ""}</summary>
+                    <label className="level-control" htmlFor="dvwa-workers">
+                      Workers
+                      <select id="dvwa-workers" value={workers} disabled={isRunning}
+                        onChange={(event) => { setWorkers(Number(event.target.value)); resetSession(); }}>
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={4}>4</option>
+                      </select>
+                    </label>
+                    <p>Sesiones independientes. Más workers no siempre reducen el tiempo total.</p>
+                  </details>
                 </div>
               )}
               <button
@@ -142,18 +181,20 @@ export default function App() {
                 {isRunning ? (
                   <>
                     <span className="button-spinner" aria-hidden="true" />
-                    Escaneando…
+                    {connectionError ? "Reconectando…" : "Escaneando…"}
                   </>
                 ) : (
                   <>
                     {scanStatus?.status === "FAILED"
                       ? "Reintentar"
-                      : "Iniciar escaneo"}
+                      : selectedPresetId === "dvwa" && dvwaVariant === "prepared"
+                        ? "Verificar corrección" : "Iniciar escaneo"}
                     <span aria-hidden="true">→</span>
                   </>
                 )}
               </button>
             </form>
+            {connectionError && <ScanConnectionNotice message={connectionError} onReconnect={reconnect} />}
             {errorMessage && (
               <ScanError
                 message={errorMessage}
@@ -177,6 +218,7 @@ export default function App() {
                     detectedCount={detectedCount}
                     isInconclusive={isInconclusive}
                     activity={currentActivity?.summary}
+                    isReconnecting={Boolean(connectionError)}
                   />
                 </div>
                 {totalRequests && (
@@ -190,27 +232,34 @@ export default function App() {
                   className="elapsed"
                   title="Desde el inicio hasta recibir los resultados; incluye la espera de actualización del panel."
                 >
-                  Tiempo total{" "}
+                  Tiempo del panel{" "}
                   <strong>{(elapsedMS / 1000).toFixed(1)} s</strong>
                 </span>
               )}
             </div>
-            <div className="execution-grid">
-              <EventStreamConsole
-                events={events}
-                isLive={isRunning}
-                key={scanId || "idle"}
-              />
-              <section className="panel" aria-labelledby="findings-title">
+            {baselineScan && !report && (
+              <p className="baseline-preserved" role="status">
+                Escaneo anterior conservado: {baselineScan.detected} hallazgos · nivel {baselineScan.level}.
+                {scanStatus?.status === "FAILED" || errorMessage
+                  ? " La reprueba no se completó; la corrección sigue sin verificar."
+                  : connectionError ? " Esperando conexión para consultar la reprueba." : " Verificando la variante corregida…"}
+              </p>
+            )}
+            <RemediationSection report={report} baselineScan={baselineScan} scanId={scanId}
+              isRunning={isRunning} onVerify={() => {
+                setDVWAVariant("prepared");
+                verifyCorrection();
+              }} />
+            <section className="panel results-panel" aria-labelledby="findings-title">
                 <div className="panel-heading">
-                  <h2 id="findings-title">Vulnerabilidades</h2>
+                  <h2 id="findings-title">Resultados de las pruebas</h2>
                   <span className="quiet">
-                    {scanStatus?.status === "FAILED" && detectedCount === 0
+                    {(scanStatus?.status === "FAILED" || (isDone && isInconclusive)) && detectedCount === 0
                       ? "Sin veredicto"
-                      : `${detectedCount} detectadas`}
+                      : payloadTests.length ? `${detectedCount} hallazgos` : "Pendiente"}
                   </span>
                 </div>
-                <div className="findings-body">
+                <div className={`findings-body ${payloadTests.length ? "findings-grid" : ""}`}>
                   {payloadTests.length ? (
                     payloadTests.map((test, index) => (
                       <FindingCard test={test} key={test.id ?? index} />
@@ -221,13 +270,25 @@ export default function App() {
                         ? "Esperando resultados…"
                         : scanStatus?.status === "FAILED"
                           ? "No se completaron pruebas SQL. Sin veredicto sobre la vulnerabilidad."
-                          : "Sin resultados todavía."}
+                          : "Inicia el escaneo para ver los resultados y el siguiente paso de corrección."}
                     </p>
                   )}
-                  <RemediationSection report={report} />
                 </div>
-              </section>
-            </div>
+            </section>
+            <details className="technical-panel" key={scanId || "idle"}>
+              <summary>Registro HTTP y rendimiento <span>{events.length ? `${events.length} eventos registrados` : "Sin actividad"}</span></summary>
+              {metrics && (
+                <dl className="performance-metrics">
+                  <div><dt>Total del backend</dt><dd>{metrics.total_ms.toFixed(1)} ms</dd></div>
+                  <div><dt>Sesiones</dt><dd>{metrics.session_ms.toFixed(1)} ms</dd></div>
+                  <div><dt>Sondas</dt><dd>{metrics.probe_ms.toFixed(1)} ms</dd></div>
+                  <div><dt>Peticiones HTTP</dt><dd>{metrics.http_requests}</dd></div>
+                  <div><dt>No concluyentes</dt><dd>{metrics.inconclusive}</dd></div>
+                  <div><dt>Fallos de transporte</dt><dd>{metrics.failed_requests}</dd></div>
+                </dl>
+              )}
+              <EventStreamConsole events={events} isLive={isRunning} />
+            </details>
           </>
         )}
       </main>

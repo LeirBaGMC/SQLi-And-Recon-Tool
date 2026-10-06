@@ -117,6 +117,8 @@ a los componentes. No autentica DVWA ni decide si una respuesta confirma SQLi.
 | `report` | Recomendaciones recibidas desde `/results` |
 | `isRunning` | Activa la consulta periódica y bloquea los controles |
 | `errorMessage` | Explica un fallo al usuario |
+| `connectionError` | Aviso de consulta interrumpida, separado del estado del escaneo |
+| `pollRevision` | Reinicia la consulta manual sobre el mismo ID |
 | `elapsedMS` | Tiempo desde iniciar hasta recibir el resultado en el navegador |
 | `startedRef` | Hora monotónica de inicio, conservada sin generar renders |
 | `submissionRef` | Bloquea dos envíos antes de que React actualice el estado |
@@ -149,7 +151,8 @@ en la hora del sistema. Al detenerse elimina el intervalo.
 
 ### Efecto de consulta periódica
 
-Necesita `isRunning` y `scanId`. Consulta estado y eventos de forma secuencial.
+Necesita `isRunning` y `scanId`. [`watchScan`](../frontend/src/scans/polling.js)
+consulta estado y eventos de forma secuencial.
 Si todavía no terminó, programa otra consulta 350 ms después. Usa `setTimeout`
 después de recibir las respuestas, para evitar consultas superpuestas.
 
@@ -157,9 +160,11 @@ Al completar, consulta `/results` y guarda el reporte. Al fallar, muestra el
 mensaje persistido. `AbortController` cancela las peticiones al cambiar de
 escaneo o desmontar el componente; no cancela el trabajo del backend.
 
-Un fallo al consultar hace que la interfaz deje de seguir el escaneo. El
-backend podría seguir ejecutándolo: el estado local del navegador no sustituye
-al registro persistido.
+Un fallo al consultar conserva el ID, el estado conocido y la evidencia. Muestra
+un aviso y reintenta con esperas de 1, 2, 4, 8 y hasta 10 segundos. «Volver a
+consultar» reinicia el seguimiento del mismo ID; no envía otro POST. Si falla
+`/results`, también vuelve a consultar antes de dar por finalizado el seguimiento.
+Solo una respuesta FAILED del backend establece un fallo del escaneo.
 
 Los conteos se derivan de los eventos. Solo las pruebas reales cuentan como
 hallazgos. El avance cuenta respuestas de la etapa `probe`, sin sumar el login.
@@ -190,6 +195,7 @@ sin conservar esta distinción podría presentar datos históricos como reales.
 | --- | --- |
 | [`ScanStatus.jsx`](../frontend/src/components/ScanStatus.jsx): `ModeIcon` | Iconos SVG de laboratorio y URL |
 | `ScanError` | Error y acción opcional para abrir el laboratorio |
+| `ScanConnectionNotice` | Aviso de conexión interrumpida y consulta manual del mismo escaneo |
 | `StatusBanner` | Estado general, diferenciando fallo, hallazgos y resultado no concluyente |
 | [`EventStreamConsole.jsx`](../frontend/src/components/EventStreamConsole.jsx): `EventStreamConsole` | Scroll automático y lista de logs |
 | `LogRow` | Hora, método, HTTP, duración y detalle de una petición o prueba |
@@ -214,10 +220,17 @@ de movimiento reducido. `public/studio.svg` es el favicon.
 
 ### `main.go`
 
-[`main`](../backend/main.go) conecta con la base de datos, crea el repositorio,
-construye el router y escucha en el puerto 8080. `defer` registra el cierre de
+[`main`](../backend/main.go) conecta con la base de datos, crea el repositorio y
+cierra los escaneos interrumpidos antes de construir el router y escuchar en el
+puerto 8080. [`FailInterruptedScans`](../backend/database/recovery.go) guarda
+FAILED, fecha de cierre y SCAN_FAILED en una transacción con límite de 30 segundos.
+Solo afecta QUEUED/RUNNING de la ejecución anterior; conserva eventos y hallazgos.
+Está diseñado para la única instancia del backend en Compose. No reanuda peticiones
+automáticamente, porque sus credenciales y contextos de ejecución no se persisten.
+`defer` registra el cierre de
 la conexión para cuando la función termine. Si no consigue conectar, el backend
-no comienza a atender solicitudes.
+no comienza a atender solicitudes. Tampoco sirve la API si falla la reconciliación
+de los escaneos interrumpidos.
 
 ### `router/router.go`
 
@@ -304,8 +317,8 @@ con su causa. Si termina el recorrido, guarda `COMPLETED` y el evento final.
 
 Completar el recorrido no equivale a detectar una vulnerabilidad: puede terminar
 con pruebas negativas o con un evento `SCAN_INCONCLUSIVE`. Si falla una escritura
-de estado, se registra en el log del servidor; no existe un mecanismo de
-recuperación automática de escaneos interrumpidos por reinicios.
+de estado, se registra en el log del servidor. El siguiente arranque cierra
+QUEUED/RUNNING como interrumpidos; no vuelve a ejecutar sus solicitudes.
 
 `runAuthorizedURLDiscovery` toma directamente los parámetros de la URL. Solo
 inicia descubrimiento cuando no encuentra candidatos. Selecciona hasta ocho,
@@ -434,7 +447,9 @@ visitadas, páginas en cola y candidatos conocidos.
 | `shouldIgnorePath` | Descarta recursos estáticos y rutas con acciones como logout/delete |
 
 Si falla la página inicial, devuelve error. Si falla una página secundaria,
-continúa con las demás. No procesa formularios, JavaScript, login personalizado
+continúa con las demás siempre que pueda guardar la evidencia de ese fallo.
+Un error al guardar HTTP_ACTIVITY detiene tanto el descubrimiento como las sondas;
+se propaga al motor y conserva los hallazgos anteriores. No procesa formularios, JavaScript, login personalizado
 o parámetros POST en este modo. Los filtros de rutas son heurísticos; no
 describen todo el comportamiento de un sitio.
 
@@ -459,6 +474,7 @@ son del pool de base de datos, no del número de escaneos.
 | `GetFindingsByScanID` | Lee hallazgos en orden, sin inventar validación dual |
 | `CreateScanEvent` | Inserta un evento y devuelve el error si falla |
 | `CreateEventWithoutInterrupting` | Registra el fallo en el servidor, sin detener una sonda |
+| `FailInterruptedScans` en `recovery.go` | Cierra los escaneos interrumpidos y su evento en una transacción |
 | `GetScanEventsByScanID` | Lee todos los eventos en orden de ID |
 
 Las sentencias usan `?` y argumentos separados. Esto protege las consultas de
@@ -587,7 +603,7 @@ activos. La carpeta privada `.build` del workshop contiene herramientas y
 renders de construcción de las diapositivas, no código de la aplicación.
 
 La limpieza retiró piezas sin uso del código activo. Permanecen límites reales:
-sin cancelación del escaneo en backend, sin recuperación de trabajos tras un
+sin cancelación del escaneo en backend, sin reanudación de solicitudes tras un
 reinicio, sin paginación de eventos ni límite global de escaneos simultáneos,
 y análisis por URL limitado a GET. Los modelos de eBPF y el worker pool antiguo
 no deben interpretarse como funcionalidades pendientes de activar con una variable.

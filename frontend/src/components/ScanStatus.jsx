@@ -11,6 +11,15 @@ export function ScanError({ message, showLab, onOpenLab }) {
   );
 }
 
+export function ScanConnectionNotice({ message, onReconnect }) {
+  return (
+    <div className="connection-notice" role="status">
+      <div><strong>Conexión interrumpida</strong><p>{message}</p></div>
+      <button type="button" className="defense-button" onClick={onReconnect}>Volver a consultar</button>
+    </div>
+  );
+}
+
 export function ModeIcon({ mode }) {
   return (
     <svg
@@ -45,11 +54,14 @@ export function StatusBanner({
   detectedCount,
   isInconclusive,
   activity,
+  isReconnecting,
 }) {
   const text =
     status === "FAILED"
       ? "Escaneo interrumpido"
-      : isRunning
+      : isReconnecting
+        ? "Esperando conexión con el backend"
+        : isRunning
         ? activity || "Escaneando…"
         : !isDone
           ? "Listo para escanear"

@@ -1,11 +1,11 @@
 # Medición local sobre DVWA Low
 
-Fecha UTC: 2026-10-04T22:13:39.176130+00:00
+Fecha UTC: 2026-10-05T14:38:50.033959+00:00
 
 | Herramienta | Mediana (s) | Detección booleana |
 | --- | ---: | --- |
-| SQLi Studio | 0.178 | 3/3 ejecuciones |
-| sqlmap | 5.525 | 3/3 ejecuciones |
+| SQLi Studio | 0.295 | 3/3 ejecuciones |
+| sqlmap | 3.753 | 3/3 ejecuciones |
 
 Sequential runs, alternating order, fresh sessions. End-to-end monotonic clock: login + detection; app polling interval 50 ms. sqlmap Python startup included. Result-report rendering excluded.
 

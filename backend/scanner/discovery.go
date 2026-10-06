@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,7 +31,6 @@ type DiscoveryCandidate struct {
 }
 
 type DiscoverySummary struct {
-	StartURL             string
 	PagesVisited         int
 	LinksDiscovered      int
 	CandidatesDiscovered int
@@ -42,9 +42,7 @@ type discoveryQueueItem struct {
 }
 
 func discoverCandidates(client *http.Client, startURL string, observe httpObserver) ([]DiscoveryCandidate, DiscoverySummary, error) {
-	summary := DiscoverySummary{
-		StartURL: startURL,
-	}
+	summary := DiscoverySummary{}
 
 	parsedStartURL, err := url.Parse(startURL)
 	if err != nil {
@@ -102,7 +100,9 @@ func discoverCandidates(client *http.Client, startURL string, observe httpObserv
 		visitedPages[currentItem.URL] = true
 
 		step := models.LabActivityEvent{StepID: fmt.Sprintf("discovery-%d", len(visitedPages)), Stage: "discovery", State: "running", Summary: "Comprobar pagina · Descubrimiento", Method: http.MethodGet, URL: currentItem.URL}
-		observeHTTP(observe, step)
+		if err := observeHTTP(observe, step); err != nil {
+			return nil, summary, err
+		}
 		started := time.Now()
 		pageResult, err := fetchDiscoveryPage(
 			*client,
@@ -116,7 +116,9 @@ func discoverCandidates(client *http.Client, startURL string, observe httpObserv
 			if pageResult.StatusCode != 0 {
 				step.State, step.StatusCode = "http_error", &pageResult.StatusCode
 			}
-			observeHTTP(observe, step)
+			if traceErr := observeHTTP(observe, step); traceErr != nil {
+				return nil, summary, errors.Join(err, traceErr)
+			}
 			if currentItem.Depth == 0 {
 				return nil, summary, externalRequestError(err)
 			}
@@ -124,7 +126,9 @@ func discoverCandidates(client *http.Client, startURL string, observe httpObserv
 		}
 		bytes := len(pageResult.Body)
 		step.State, step.StatusCode, step.ResponseBytes = "completed", &pageResult.StatusCode, &bytes
-		observeHTTP(observe, step)
+		if err := observeHTTP(observe, step); err != nil {
+			return nil, summary, err
+		}
 
 		summary.PagesVisited++
 

@@ -1,0 +1,2832 @@
+{
+  "created_at": "2026-10-05T15:44:11.399502+00:00",
+  "runs_per_configuration": 5,
+  "evidence_equivalent": true,
+  "valid": true,
+  "method": "Local Docker DVWA; six fixed logical probes: baseline, quote, true/false twice. Baseline first; five jobs on a bounded pool. Fresh isolated session per worker. High serializes each input POST + result GET. Warmup excluded; rotated alternating run order. Backend monotonic wall clocks include trace persistence; total also includes finding persistence. API polling is separately measured and excluded from backend clocks.",
+  "request_accounting": "HTTP calls = 4 authentication calls per worker + 6 probes (Low/Medium) or 12 input/probe calls (High). Redirect hops are excluded. Concurrent jobs wait for trace persistence; authentication overhead is included in total. HTTP 500 with a known signature is measured evidence, not a transport failure.",
+  "limitations": "Pilot on one local machine; small sample and six logical probes, no WAN load or time-based injection. A larger worker count may cost more than it saves. Negative-control and unstable-response checks run in Go tests; this live DVWA benchmark alone cannot estimate general recall or false-positive rate. sqlmap and eBPF are outside this worker experiment.",
+  "summary": [
+    {
+      "level": "low",
+      "workers": 1,
+      "median_total_ms": 248.587,
+      "p95_total_ms": 259.64,
+      "median_session_ms": 70.301,
+      "median_probe_ms": 113.973,
+      "total_speedup": 1.0,
+      "probe_speedup": 1.0,
+      "http_requests": 10,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "low",
+      "workers": 2,
+      "median_total_ms": 272.463,
+      "p95_total_ms": 298.212,
+      "median_session_ms": 119.625,
+      "median_probe_ms": 105.094,
+      "total_speedup": 0.912,
+      "probe_speedup": 1.084,
+      "http_requests": 14,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "low",
+      "workers": 4,
+      "median_total_ms": 434.719,
+      "p95_total_ms": 499.303,
+      "median_session_ms": 261.935,
+      "median_probe_ms": 113.269,
+      "total_speedup": 0.572,
+      "probe_speedup": 1.006,
+      "http_requests": 22,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "medium",
+      "workers": 1,
+      "median_total_ms": 257.839,
+      "p95_total_ms": 312.114,
+      "median_session_ms": 74.25,
+      "median_probe_ms": 123.039,
+      "total_speedup": 1.0,
+      "probe_speedup": 1.0,
+      "http_requests": 10,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "medium",
+      "workers": 2,
+      "median_total_ms": 305.422,
+      "p95_total_ms": 390.405,
+      "median_session_ms": 146.735,
+      "median_probe_ms": 117.749,
+      "total_speedup": 0.844,
+      "probe_speedup": 1.045,
+      "http_requests": 14,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "medium",
+      "workers": 4,
+      "median_total_ms": 419.87,
+      "p95_total_ms": 464.843,
+      "median_session_ms": 259.006,
+      "median_probe_ms": 107.413,
+      "total_speedup": 0.614,
+      "probe_speedup": 1.145,
+      "http_requests": 22,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "high",
+      "workers": 1,
+      "median_total_ms": 331.172,
+      "p95_total_ms": 375.537,
+      "median_session_ms": 69.268,
+      "median_probe_ms": 210.236,
+      "total_speedup": 1.0,
+      "probe_speedup": 1.0,
+      "http_requests": 16,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "high",
+      "workers": 2,
+      "median_total_ms": 399.166,
+      "p95_total_ms": 406.81,
+      "median_session_ms": 128.149,
+      "median_probe_ms": 207.322,
+      "total_speedup": 0.83,
+      "probe_speedup": 1.014,
+      "http_requests": 20,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    },
+    {
+      "level": "high",
+      "workers": 4,
+      "median_total_ms": 500.453,
+      "p95_total_ms": 539.059,
+      "median_session_ms": 244.414,
+      "median_probe_ms": 197.351,
+      "total_speedup": 0.662,
+      "probe_speedup": 1.065,
+      "http_requests": 28,
+      "valid_runs": 5,
+      "inconclusive": 0,
+      "transport_failures": 0
+    }
+  ],
+  "warmups": [
+    {
+      "scan_id": "d515e676139c4151c41785321725751b",
+      "level": "low",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 353.804,
+      "metrics": {
+        "level": "low",
+        "workers": 1,
+        "total_ms": 271.419,
+        "session_ms": 75.604,
+        "probe_ms": 134.166,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "007eb023d974fc9f6d1321371320c005",
+      "level": "low",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 370.562,
+      "metrics": {
+        "level": "low",
+        "workers": 2,
+        "total_ms": 280.591,
+        "session_ms": 125.233,
+        "probe_ms": 105.751,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "f40aca3248e306ca822d6e4d9128769f",
+      "level": "low",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 484.574,
+      "metrics": {
+        "level": "low",
+        "workers": 4,
+        "total_ms": 397.846,
+        "session_ms": 250.959,
+        "probe_ms": 98.849,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "05c5fdc41cce2fc6b48ee85c7e025ee8",
+      "level": "medium",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 298.448,
+      "metrics": {
+        "level": "medium",
+        "workers": 1,
+        "total_ms": 220.656,
+        "session_ms": 67.344,
+        "probe_ms": 101.648,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "5d4a0916e9d27e1df893841c43caaed9",
+      "level": "medium",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 355.579,
+      "metrics": {
+        "level": "medium",
+        "workers": 2,
+        "total_ms": 277.512,
+        "session_ms": 124.87,
+        "probe_ms": 105.38,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "e967053e62fc36a154467aaae3dcddbb",
+      "level": "medium",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 502.488,
+      "metrics": {
+        "level": "medium",
+        "workers": 4,
+        "total_ms": 421.308,
+        "session_ms": 247.262,
+        "probe_ms": 123.645,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "76ef6d97315490f78f162bddfb29bcf5",
+      "level": "high",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 414.338,
+      "metrics": {
+        "level": "high",
+        "workers": 1,
+        "total_ms": 349.997,
+        "session_ms": 74.367,
+        "probe_ms": 225.909,
+        "http_requests": 16,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "26227e68f1ef71f3654482bf6e7208f2",
+      "level": "high",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 441.153,
+      "metrics": {
+        "level": "high",
+        "workers": 2,
+        "total_ms": 374.701,
+        "session_ms": 118.887,
+        "probe_ms": 196.349,
+        "http_requests": 20,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "scan_id": "2009e8475ce2b27c34d04f021e6efde9",
+      "level": "high",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 565.815,
+      "metrics": {
+        "level": "high",
+        "workers": 4,
+        "total_ms": 495.722,
+        "session_ms": 243.178,
+        "probe_ms": 201.687,
+        "http_requests": 28,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "scan_id": "f0cfc436f466a316dde2d9c3a0f00053",
+      "level": "low",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 330.414,
+      "metrics": {
+        "level": "low",
+        "workers": 1,
+        "total_ms": 255.892,
+        "session_ms": 70.301,
+        "probe_ms": 113.973,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "395e391b33f3c0a962bbc08e84afe4c3",
+      "level": "low",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 340.557,
+      "metrics": {
+        "level": "low",
+        "workers": 2,
+        "total_ms": 269.231,
+        "session_ms": 118.714,
+        "probe_ms": 97.169,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "566f24efc395b4068996e74dd766eaa8",
+      "level": "low",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 441.301,
+      "metrics": {
+        "level": "low",
+        "workers": 4,
+        "total_ms": 388.216,
+        "session_ms": 233.288,
+        "probe_ms": 101.627,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "8ddfc3ef8820321fdac58d46d7e3378d",
+      "level": "medium",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 327.218,
+      "metrics": {
+        "level": "medium",
+        "workers": 1,
+        "total_ms": 232.339,
+        "session_ms": 65.626,
+        "probe_ms": 114.714,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "a3153e55d9778ac45f501e6b5e6f472a",
+      "level": "medium",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 434.166,
+      "metrics": {
+        "level": "medium",
+        "workers": 2,
+        "total_ms": 357.835,
+        "session_ms": 150.204,
+        "probe_ms": 149.81,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "180f40784feb419f9c7129e593a8c78a",
+      "level": "medium",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 485.423,
+      "metrics": {
+        "level": "medium",
+        "workers": 4,
+        "total_ms": 416.887,
+        "session_ms": 267.585,
+        "probe_ms": 98.055,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "87ee5d9883ec5f989a542c39bdea1f3e",
+      "level": "high",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 398.386,
+      "metrics": {
+        "level": "high",
+        "workers": 1,
+        "total_ms": 331.172,
+        "session_ms": 69.34,
+        "probe_ms": 209.459,
+        "http_requests": 16,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "03c47e7071f7c27fa1d6768b54b7ee42",
+      "level": "high",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 464.766,
+      "metrics": {
+        "level": "high",
+        "workers": 2,
+        "total_ms": 399.166,
+        "session_ms": 128.149,
+        "probe_ms": 221.896,
+        "http_requests": 20,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 1,
+      "scan_id": "ff8fa841620cc4c60b23c09aef9d8c6a",
+      "level": "high",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 549.473,
+      "metrics": {
+        "level": "high",
+        "workers": 4,
+        "total_ms": 500.453,
+        "session_ms": 244.414,
+        "probe_ms": 204.39,
+        "http_requests": 28,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "3bcaa10f81d1fda39aaf6d8fd8b0c4af",
+      "level": "low",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 297.003,
+      "metrics": {
+        "level": "low",
+        "workers": 1,
+        "total_ms": 226.261,
+        "session_ms": 70.061,
+        "probe_ms": 105.534,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "424409927937681af0b2a58dd988580f",
+      "level": "high",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 540.627,
+      "metrics": {
+        "level": "high",
+        "workers": 4,
+        "total_ms": 461.33,
+        "session_ms": 232.981,
+        "probe_ms": 180.86,
+        "http_requests": 28,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "6d1724376f81e9bfa06e804f30c89922",
+      "level": "high",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 430.343,
+      "metrics": {
+        "level": "high",
+        "workers": 2,
+        "total_ms": 342.616,
+        "session_ms": 115.309,
+        "probe_ms": 179.806,
+        "http_requests": 20,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "ebc306a6f3e50f283949be2916309283",
+      "level": "high",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 407.428,
+      "metrics": {
+        "level": "high",
+        "workers": 1,
+        "total_ms": 317.701,
+        "session_ms": 64.216,
+        "probe_ms": 205.311,
+        "http_requests": 16,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "fd1e8e73054f95781961edeefd8193f1",
+      "level": "medium",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 490.759,
+      "metrics": {
+        "level": "medium",
+        "workers": 4,
+        "total_ms": 419.87,
+        "session_ms": 241.99,
+        "probe_ms": 107.413,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "30931b97f98ca155f1149b3e7fdfee51",
+      "level": "medium",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 380.026,
+      "metrics": {
+        "level": "medium",
+        "workers": 2,
+        "total_ms": 298.367,
+        "session_ms": 146.735,
+        "probe_ms": 102.393,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "f3b7f5c1eba60d49004a5659229a0a8b",
+      "level": "medium",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 406.207,
+      "metrics": {
+        "level": "medium",
+        "workers": 1,
+        "total_ms": 325.024,
+        "session_ms": 92.245,
+        "probe_ms": 163.179,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "f0df5b0a5fb0f7e47b8774a1650d7eb1",
+      "level": "low",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 468.295,
+      "metrics": {
+        "level": "low",
+        "workers": 4,
+        "total_ms": 397.495,
+        "session_ms": 255.568,
+        "probe_ms": 95.382,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "scan_id": "c1f54dc547d249ae74327aa532298b42",
+      "level": "low",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 358.758,
+      "metrics": {
+        "level": "low",
+        "workers": 2,
+        "total_ms": 272.463,
+        "session_ms": 114.962,
+        "probe_ms": 108.223,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "a8e29aefa639a260d89834c704166e05",
+      "level": "low",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 496.253,
+      "metrics": {
+        "level": "low",
+        "workers": 4,
+        "total_ms": 440.323,
+        "session_ms": 261.935,
+        "probe_ms": 125.594,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "464a9ea35a762eadbbbf7ef1928232df",
+      "level": "medium",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 305.477,
+      "metrics": {
+        "level": "medium",
+        "workers": 1,
+        "total_ms": 233.815,
+        "session_ms": 63.196,
+        "probe_ms": 116.041,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "ae17fcb0641a45f210b7e6d414e7c7e9",
+      "level": "medium",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 341.936,
+      "metrics": {
+        "level": "medium",
+        "workers": 2,
+        "total_ms": 272.048,
+        "session_ms": 115.629,
+        "probe_ms": 101.878,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "dd2a28afb33f5b655f3a0954ca510a57",
+      "level": "medium",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 434.875,
+      "metrics": {
+        "level": "medium",
+        "workers": 4,
+        "total_ms": 368.738,
+        "session_ms": 222.803,
+        "probe_ms": 95.592,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "291e7d53c2f501567da869ba7df1d659",
+      "level": "high",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 405.788,
+      "metrics": {
+        "level": "high",
+        "workers": 1,
+        "total_ms": 326.363,
+        "session_ms": 67.231,
+        "probe_ms": 210.236,
+        "http_requests": 16,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "259e6b4420502484a1ea608add526ee4",
+      "level": "high",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 416.261,
+      "metrics": {
+        "level": "high",
+        "workers": 2,
+        "total_ms": 345.754,
+        "session_ms": 115.491,
+        "probe_ms": 183.847,
+        "http_requests": 20,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "0f64d40dbd2a3f924cccac9fe08c1acb",
+      "level": "high",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 549.106,
+      "metrics": {
+        "level": "high",
+        "workers": 4,
+        "total_ms": 466.66,
+        "session_ms": 226.457,
+        "probe_ms": 193.639,
+        "http_requests": 28,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "59053640ff0884c27c2ef55a83e8b003",
+      "level": "low",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 272.079,
+      "metrics": {
+        "level": "low",
+        "workers": 1,
+        "total_ms": 221.836,
+        "session_ms": 61.765,
+        "probe_ms": 110.329,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "scan_id": "374c32b27976d9eadd5c732d3e9d5cf4",
+      "level": "low",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 337.309,
+      "metrics": {
+        "level": "low",
+        "workers": 2,
+        "total_ms": 261.957,
+        "session_ms": 119.625,
+        "probe_ms": 94.281,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "feaf1398207a6b4070668e3cba9e00a0",
+      "level": "low",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 587.846,
+      "metrics": {
+        "level": "low",
+        "workers": 4,
+        "total_ms": 514.048,
+        "session_ms": 301.133,
+        "probe_ms": 134.07,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "aa18d71bb0b205ec77ef53c3b7296999",
+      "level": "low",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 377.364,
+      "metrics": {
+        "level": "low",
+        "workers": 2,
+        "total_ms": 299.522,
+        "session_ms": 131.409,
+        "probe_ms": 112.718,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "aeb8a34089bf3d4d22e8d284049d9ba7",
+      "level": "low",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 312.854,
+      "metrics": {
+        "level": "low",
+        "workers": 1,
+        "total_ms": 260.577,
+        "session_ms": 70.304,
+        "probe_ms": 120.856,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "25dc25587f2e83924d7540a6ba351b14",
+      "level": "high",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 626.707,
+      "metrics": {
+        "level": "high",
+        "workers": 4,
+        "total_ms": 523.809,
+        "session_ms": 271.827,
+        "probe_ms": 197.351,
+        "http_requests": 28,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "5c4830a9138cb2edac13068225857459",
+      "level": "high",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 488.998,
+      "metrics": {
+        "level": "high",
+        "workers": 2,
+        "total_ms": 408.177,
+        "session_ms": 142.141,
+        "probe_ms": 207.322,
+        "http_requests": 20,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "4243524f2303c676df2754e3001c08bb",
+      "level": "high",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 431.928,
+      "metrics": {
+        "level": "high",
+        "workers": 1,
+        "total_ms": 379.432,
+        "session_ms": 69.268,
+        "probe_ms": 256.063,
+        "http_requests": 16,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "5191488cefc2bee37da1b8100060aa49",
+      "level": "medium",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 543.421,
+      "metrics": {
+        "level": "medium",
+        "workers": 4,
+        "total_ms": 474.935,
+        "session_ms": 302.473,
+        "probe_ms": 111.773,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "2522f335e2abd7e610e9a7fe36a1dd81",
+      "level": "medium",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 368.05,
+      "metrics": {
+        "level": "medium",
+        "workers": 2,
+        "total_ms": 305.422,
+        "session_ms": 125.518,
+        "probe_ms": 117.749,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "scan_id": "4c5e555e79c72ff328e8d40318a9ce2d",
+      "level": "medium",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 326.388,
+      "metrics": {
+        "level": "medium",
+        "workers": 1,
+        "total_ms": 257.839,
+        "session_ms": 74.25,
+        "probe_ms": 123.039,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "ec38b680b85a5bff8f2a072b5bdec2e5",
+      "level": "medium",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 505.097,
+      "metrics": {
+        "level": "medium",
+        "workers": 2,
+        "total_ms": 398.548,
+        "session_ms": 180.611,
+        "probe_ms": 149.479,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "dacb2cc6f9e132726706731e5cb7816d",
+      "level": "medium",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 511.306,
+      "metrics": {
+        "level": "medium",
+        "workers": 4,
+        "total_ms": 424.475,
+        "session_ms": 259.006,
+        "probe_ms": 108.168,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "77c6c6fa5241ef6769b860815a658cd5",
+      "level": "high",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 417.905,
+      "metrics": {
+        "level": "high",
+        "workers": 1,
+        "total_ms": 359.959,
+        "session_ms": 74.259,
+        "probe_ms": 225.014,
+        "http_requests": 16,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "a6a94c5ab785d467e459f9f7c2e67676",
+      "level": "high",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 501.012,
+      "metrics": {
+        "level": "high",
+        "workers": 2,
+        "total_ms": 401.34,
+        "session_ms": 130.514,
+        "probe_ms": 214.71,
+        "http_requests": 20,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "53e92c472a85db110a75ba738145e585",
+      "level": "high",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 634.096,
+      "metrics": {
+        "level": "high",
+        "workers": 4,
+        "total_ms": 542.871,
+        "session_ms": 284.226,
+        "probe_ms": 207.934,
+        "http_requests": 28,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "7b0f553c110453d71f0fb40e751dc423c8b3ea4a62efb9057bbf0030c5fc9a64",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "high",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "2369b26c80262036941d8187c05a0fa7",
+      "level": "low",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 316.839,
+      "metrics": {
+        "level": "low",
+        "workers": 1,
+        "total_ms": 248.587,
+        "session_ms": 75.251,
+        "probe_ms": 115.268,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "981e54e15800ac0bccdffa296cd28a38",
+      "level": "low",
+      "workers": 2,
+      "status": "COMPLETED",
+      "end_to_end_ms": 383.599,
+      "metrics": {
+        "level": "low",
+        "workers": 2,
+        "total_ms": 292.974,
+        "session_ms": 134.239,
+        "probe_ms": 105.094,
+        "http_requests": 14,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "1d2cba950323373223be5b320bccad52",
+      "level": "low",
+      "workers": 4,
+      "status": "COMPLETED",
+      "end_to_end_ms": 522.002,
+      "metrics": {
+        "level": "low",
+        "workers": 4,
+        "total_ms": 434.719,
+        "session_ms": 267.288,
+        "probe_ms": 113.269,
+        "http_requests": 22,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "b5ee96e73833187ed568a7fa117e4acc5514d3996a3ce7e1750b87080c177d45",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1' AND '1'='1 / 1' AND '1'='2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "GET",
+          "dvwa_level": "low",
+          "execution_type": "REAL"
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "scan_id": "4db71dee22385db9b0f7b31d68f24a34",
+      "level": "medium",
+      "workers": 1,
+      "status": "COMPLETED",
+      "end_to_end_ms": 352.013,
+      "metrics": {
+        "level": "medium",
+        "workers": 1,
+        "total_ms": 260.475,
+        "session_ms": 75.09,
+        "probe_ms": 132.917,
+        "http_requests": 10,
+        "completed_probes": 6,
+        "failed_requests": 0,
+        "http_error_responses": 0,
+        "detected": 2,
+        "inconclusive": 0
+      },
+      "valid_evidence": true,
+      "findings": 2,
+      "evidence_digest": "79fb80bae2233845adeafc6ed49b792ba1354d67685c17e45e9b6cd25fffbb8e",
+      "probes": [
+        {
+          "name": "DVWA · Error SQL",
+          "result": "DETECTED",
+          "payload": "1'",
+          "status_code": 200,
+          "baseline_records": null,
+          "true_records": null,
+          "observed_records": null,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        },
+        {
+          "name": "DVWA · Comparacion booleana",
+          "result": "DETECTED",
+          "payload": "1 AND 1=1 / 1 AND 1=2",
+          "status_code": 200,
+          "baseline_records": 1,
+          "true_records": 1,
+          "observed_records": 0,
+          "method": "POST",
+          "dvwa_level": "medium",
+          "execution_type": "REAL"
+        }
+      ]
+    }
+  ]
+}
