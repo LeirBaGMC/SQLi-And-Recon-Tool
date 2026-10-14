@@ -39,8 +39,14 @@ backend/bin/
 *.swo
 *~
 
-# Herramienta de comparación descargada desde su repositorio oficial
-tools/sqlmap/
+# Material de apoyo retirado del repositorio del workshop
+/docs/
+/scripts/
+/tests/
 
-# Construcción y verificación privada de la presentación del workshop
-docs/workshop-90/.build/
+# Archivos de trabajo y guion local del expositor
+/tmp/
+/Guion_SQLi_Studio_*.docx
+
+# Herramientas locales descargadas para comparación
+/tools/sqlmap/

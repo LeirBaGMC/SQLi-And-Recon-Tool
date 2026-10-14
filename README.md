@@ -1,177 +1,212 @@
-# SQL Injection Scanner · DVWA
+# SQLi Studio · Workshop con DVWA
 
-Dashboard React y API Go para ejecutar pruebas SQL Injection contra DVWA local y un objetivo externo autorizado.
+Aplicación educativa para seguir una prueba de inyección SQL desde el formulario
+hasta la evidencia HTTP, los resultados y la comprobación de una corrección.
+Incluye un frontend React, una API en Go y un laboratorio DVWA con una variante
+vulnerable y otra corregida con consultas preparadas.
 
-## Arranque
+El workshop utiliza el laboratorio local. La opción **URL autorizada** permite
+analizar otros objetivos sobre los que tengas autorización.
 
-1. Configura `.env` a partir de `.env.example` si todavía no existe.
-2. Ejecuta `docker compose -f compose.yaml up -d --build`.
-3. Abre el dashboard en http://localhost:3000 y DVWA en http://localhost:8000.
+## Preparar el workshop
 
-El backend escucha en http://localhost:8080. El usuario de entrenamiento de DVWA
-es `admin` y su contraseña inicial es `password`. El servicio `dvwa-init` utiliza
-la página oficial de setup para inicializar una base nueva; en arranques siguientes
-conserva los datos existentes.
+Necesitas Git y Docker con el complemento Docker Compose. En Windows, inicia
+Docker Desktop con contenedores Linux. Para este arranque no necesitas instalar
+Go, Node.js, PHP ni MySQL en tu equipo.
 
-Para desarrollo del frontend, levanta `docker compose -f compose.yaml up -d --build backend`
-y ejecuta `npm install` y `npm run dev` desde `frontend`. Vite conecta con
-`http://127.0.0.1:8080`; `BACKEND_PROXY_URL` permite usar otra dirección.
-No ejecutes simultáneamente Vite y el frontend Docker en el mismo puerto 3000.
+### 1. Descargar el proyecto
 
-## Objetivos y pruebas
-
-- **DVWA · SQL Injection (Low / Medium / High):** el panel propone Medium y permite
-  seleccionar Low o High, con 1, 2 o 4 workers (por defecto 1). Login con cookies y
-  token CSRF, nivel confirmado en una sesión independiente por worker, petición
-  base, sonda de error SQL y pares booleanos repetidos. Low utiliza GET y condiciones
-  entre comillas; Medium utiliza POST y condiciones numéricas. High guarda `id`
-  por POST en `session-input.php` y consulta por GET dentro de la misma sesión.
-  El motor compara registros HTML, ignorando la entrada reflejada y tokens dinámicos.
-- **Análisis por URL:** admite dominios, IP y hosts locales mediante HTTP/HTTPS,
-  con credenciales Basic y puertos personalizados. Analiza directamente los parámetros de la URL indicada.
-  Si no contiene parámetros, busca enlaces en hasta cinco páginas del mismo origen.
-  Muestra cada petición GET y distingue fallos de conexión de pruebas sin detección.
-  El comportamiento está documentado en `docs/authorized-http-tests.md`.
-
-Las peticiones y hallazgos son reales. La evidencia es HTTP; no hay un sensor eBPF
-integrado. Una respuesta bloqueada, inestable o una sesión inválida no se interpreta
-como protección. El panel distingue bytes recibidos de registros observados.
-
-## Corrección del laboratorio · Blue team
-
-Al completar un escaneo DVWA, el panel muestra el código vulnerable y el extracto
-mysqli de la corrección local. **Probar variante corregida** inicia otro escaneo
-con el mismo nivel y workers, conservando el ID y el conteo de hallazgos anterior
-para la comparación. El selector **Variante** permite probar directamente ambos
-módulos. El módulo `sqli-fixed` se monta desde `infrastructure/dvwa/fixed`; el
-módulo vulnerable oficial sigue disponible como control de entrenamiento.
-
-La corrección valida `id` como entero positivo, usa `mysqli_prepare` y
-`mysqli_stmt_bind_param`, codifica la salida HTML y responde a errores SQL sin
-exponer sus detalles. High utiliza su propia clave de sesión y valida al consultar.
-El reporte solo muestra **Reprueba HTTP aprobada** cuando el escaneo completó,
-no hay hallazgos ni sondas inconclusas, están las seis respuestas HTTP 200,
-`id=1` devuelve un registro y las cinco entradas SQL presentan rechazo explícito
-sin registros. Los escaneos anteriores que no conservan ese indicador permanecen
-sin verificar. El reporte se puede descargar como JSON; las evidencias detalladas
-siguen en `/api/scans/:id/events` y la comparación del panel dura esta sesión.
-
-El CTA **Preparar observabilidad eBPF** abre los pasos y la guía oficial de
-Tetragon. Su estado actual es **Sensor no conectado**: no instala sensores ni
-activa bloqueo. Los permisos mínimos de base de datos y la correlación de eventos
-de kernel siguen pendientes. Ver [revisión y criterios defensivos](docs/BLUE_TEAM_DVWA.md).
-
-El laboratorio Go anterior y sus servicios `vulnerable-app`, `secure-app` y `lab-db`
-fueron sustituidos por DVWA. Los datos históricos del escáner se conservan.
-
-El laboratorio registra el inicio y la respuesta de cada petición con método,
-estado HTTP, duración, bytes y número de registros. El panel agrupa ambos eventos
-en una fila; las URL y entradas se despliegan al abrirla. Nunca registra contraseñas,
-cookies, tokens CSRF ni nombres de usuarios devueltos por DVWA. El indicador de
-avance cuenta las seis respuestas de prueba, separadas de la autenticación y los
-seis POST adicionales de High. Cada petición conserva un ID y su worker; los
-veredictos se evalúan por posición lógica, independientemente del orden de llegada.
-Las sondas fallidas o las repeticiones inestables se marcan como inconclusas. Un
-error al persistir evidencia hace fallar el escaneo. El
-botón «Pausar» detiene el desplazamiento automático y «Reanudar» lo activa.
-
-Si falla una consulta del panel, conserva el ID, el estado conocido y la evidencia;
-reintenta automáticamente con esperas de 1 a 10 segundos. **Volver a consultar**
-consulta ese mismo escaneo, sin crear otra ejecución. Una pérdida de conexión
-no se convierte en un fallo SQL ni en un resultado sin hallazgos.
-Al arrancar el backend, los escaneos anteriores QUEUED/RUNNING se cierran como
-FAILED con la causa del reinicio y su evento, en una transacción. Conserva los
-hallazgos anteriores y no repite solicitudes automáticamente. Este mecanismo
-corresponde al despliegue actual con una sola instancia del backend.
-
-## Arquitectura
-
-| Servicio | Función | Acceso |
-| --- | --- | --- |
-| frontend | React servido por Nginx o Vite | localhost:3000 |
-| backend | API REST y motor de pruebas | localhost:8080 |
-| scanner-db | Historial, eventos y hallazgos | Red interna |
-| dvwa | Aplicación PHP de entrenamiento | localhost:8000 |
-| dvwa-db | MariaDB exclusiva de DVWA | Red interna |
-| dvwa-init | Inicialización idempotente | Ejecución única |
-
-DVWA utiliza la imagen oficial del proyecto y se publica únicamente en la interfaz
-local. Sus bases de datos no publican puertos. `compose.yaml` es la configuración
-principal; `docker-compose.yml` la incluye por compatibilidad.
-
-## Verificación
-
-- `npm test`, `npm run lint` y `npm run build` desde `frontend`.
-- `go test ./...` desde `backend`; también se ejecuta al construir su imagen Docker.
-- `./tests/integration/dvwa.ps1` desde PowerShell con frontend y backend activos:
-  comprueba Medium con dos pruebas reales, seis respuestas medidas y al menos un
-  hallazgo. Añade `-Level low` o `-Level high` y `-Workers 1`, `2` o `4`.
-- `./tests/integration/blue-team.ps1` prueba ambas variantes en Low, Medium y
-  High con 1, 2 y 4 workers: 18 escaneos reales y sus criterios de corrección.
-- `./tests/integration/recovery.ps1` reinicia el backend con un escaneo de prueba
-  pendiente y comprueba su cierre y la conservación de un escaneo completado.
-  Requiere que no haya otros escaneos activos antes de comenzar.
-- `tests/integration/infrastructure.sh` comprueba los servicios Docker.
-- `./tests/integration/authorized-url.ps1` verifica el flujo externo real, incluyendo
-  errores persistidos, logs HTTP y ausencia de rastreo previo para una URL con parámetros.
-  Por defecto utiliza el endpoint local de salud del backend; `-TargetURL` permite
-  elegir otra URL de prueba con parámetros. El endpoint de salud comprueba el flujo
-  HTTP, sin demostrar una vulnerabilidad SQL.
-
-## Comparación con sqlmap
-
-La comparación entre workers se reproduce con `python scripts/benchmark_workers.py --runs 5`.
-Ejecuta los tres niveles, conserva seis sondas lógicas por escaneo y verifica
-equivalencia de evidencia, incluidos los dos pares booleanos y sus registros.
-Publica tiempos de sesiones, sondas y total del backend, p95, peticiones y fallos
-en `docs/benchmarks/workers-latest.md` y `.json`; el reloj del panel se muestra aparte.
-En este piloto 2 workers redujeron el tiempo de sondas, pero aumentaron el total
-por las sesiones y su registro. No se presenta ese aumento como una mejora.
-
-El panel abre con dos accesos: Laboratorio y URL autorizada. Al completar DVWA,
-la corrección y su siguiente acción aparecen antes de los resultados: probar la
-variante corregida, repetir una verificación inconclusa o consultar el plan eBPF
-tras aprobar la reprueba HTTP. El sensor se identifica como no conectado.
-El código, los IDs, las evidencias de cada prueba y el registro HTTP se despliegan
-al solicitarlos. Los workers están en Opciones. El tiempo del panel incluye las
-actualizaciones hasta recibir los resultados en el navegador y no es la medida
-utilizada en el benchmark.
-
-Para repetir la medición local necesitas Python 3 y una copia oficial de sqlmap:
-
-```powershell
-git clone --depth 1 https://github.com/sqlmapproject/sqlmap.git tools/sqlmap
-python scripts/benchmark_dvwa.py --runs 3
+```sh
+git clone --branch refactor/sandbox-infrastructure https://github.com/LeirBaGMC/SQLi-And-Recon-Tool.git
+cd SQLi-And-Recon-Tool
 ```
 
-Con frontend, backend y DVWA activos, el script compara tres ejecuciones por
-herramienta, alterna su orden y crea sesiones nuevas. Utiliza explícitamente Low,
-exclusivamente DVWA
-en localhost:8000, nivel Low y el parámetro id. sqlmap se limita a detección
-booleana, nivel 1, riesgo 1 y un hilo, sin solicitar extracción de datos. Utiliza
-DVWA_USERNAME y DVWA_PASSWORD del entorno si configuraste otras credenciales.
+### 2. Crear la configuración local
 
-La mediana y las ejecuciones individuales quedan en `docs/benchmarks/dvwa-latest.md`
-y `docs/benchmarks/dvwa-latest.json`. La medición incluye login y detección; sqlmap
-incluye el arranque de Python y la app incluye hasta 50 ms de espera de consulta.
-El motor de la app tiene dos pruebas concretas; sqlmap comprueba más variantes.
-Las rutas de red también difieren (Docker interno frente a loopback del host).
-Esta prueba local no demuestra superioridad general ni cobertura equivalente.
+Desde la raíz, copia el ejemplo solo si todavía no tienes `.env`.
 
-## Referencia
+En PowerShell:
 
-Para recorrer el código activo, utiliza [la guía completa de código](docs/CODIGO_GUIA.md).
-Explica cada módulo, el flujo desde el botón hasta MySQL y el orden de estudio.
-La [guía del expositor de 90 minutos](docs/workshop-90/entregables/Guia_expositor_90_min.md)
-indica cuándo mostrar la app o el editor durante la presentación.
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
 
-El estado de un escaneo se consulta en `GET /api/scans/:id`; el reporte se genera
-en `GET /api/scans/:id/results`. DVWA admite 1, 2 o 4 workers con sesiones
-independientes. No hay telemetría de kernel en el código activo.
+En macOS o Linux:
 
-La API rechaza peticiones de navegador con un Origin distinto al dashboard local.
-`SCANNER_ALLOWED_ORIGINS` define los orígenes en el backend; Compose deriva sus
-valores de `FRONTEND_PORT`. Los clientes de consola pueden seguir usando la API.
+```sh
+test -f .env || cp .env.example .env
+```
 
-[DVWA oficial](https://github.com/digininja/DVWA). El material en `docs/workshop`
-corresponde a la arquitectura anterior y se conserva como referencia histórica.
+Los valores de `.env.example` corresponden al laboratorio local. `.env` queda
+fuera de Git. Si cambias las credenciales de una base que ya tiene datos, debes
+actualizarlas también en esa base; editar `.env` no cambia usuarios existentes.
+
+### 3. Levantar la aplicación
+
+```sh
+docker compose -f compose.yaml up -d --build
+docker compose -f compose.yaml ps -a
+```
+
+La primera ejecución descarga las imágenes, compila la aplicación e inicializa
+las bases. Espera a que frontend, backend, DVWA y las dos bases aparezcan como
+`healthy`. El servicio `dvwa-init` debe terminar con `Exited (0)`: indica que
+la inicialización finalizó correctamente.
+
+| Servicio | Dirección predeterminada | Para qué sirve |
+| --- | --- | --- |
+| SQLi Studio | [localhost:3000](http://localhost:3000) | Iniciar escaneos y revisar evidencia |
+| Salud de la API | [localhost:8080/health](http://localhost:8080/health) | Comprobar backend y su conexión a la base |
+| DVWA | [localhost:8000](http://localhost:8000) | Laboratorio de entrenamiento |
+
+La cuenta inicial de DVWA es `admin` / `password`. El escáner inicia sesión
+automáticamente con las credenciales configuradas. Los puertos se publican solo
+en `127.0.0.1`; las bases están en redes internas de Docker.
+
+## Recorrido de la demostración
+
+1. Abre SQLi Studio y elige **Laboratorio**.
+2. Selecciona nivel **Medium**, **1 worker** y variante **Vulnerable**.
+3. Inicia el escaneo. Revisa su estado, la consola y los resultados.
+4. Abre la sección de corrección para comparar el código vulnerable con la
+   consulta preparada.
+5. Pulsa **Probar variante corregida**. Se crea otro escaneo con el mismo nivel
+   y número de workers; el anterior queda como referencia para la comparación.
+6. Revisa la evidencia de la nueva ejecución y su reporte. Puedes descargarlo
+   como JSON.
+
+En DVWA se realizan seis sondas: una respuesta de referencia, una prueba con
+comilla y dos pares de condiciones verdaderas y falsas. Alimentan dos resultados:
+error SQL y comparación booleana.
+
+**Low** envía el valor con GET; **Medium**, con POST; y **High** lo guarda primero
+en la sesión y después consulta el módulo. Los workers permiten ejecutar varias
+sondas a la vez, cada uno con su propia sesión. Se admiten 1, 2 o 4; más workers
+no garantizan un menor tiempo total.
+
+### Cómo leer los resultados
+
+| Indicador | Significado |
+| --- | --- |
+| `QUEUED` / `RUNNING` | Escaneo pendiente / en ejecución |
+| `COMPLETED` / `FAILED` | La ejecución terminó / tuvo un fallo operativo |
+| `DETECTED` | La prueba encontró evidencia que cumple su criterio de detección |
+| `NOT_DETECTED` | Esa prueba no detectó la señal buscada |
+| `INCONCLUSIVE` | La evidencia no permite concluir |
+
+`COMPLETED` describe la ejecución; no certifica que el objetivo sea seguro.
+La ausencia de hallazgos tampoco demuestra por sí sola que una corrección funcione.
+
+La **Reprueba HTTP aprobada** exige un escaneo completado, dos resultados reales
+sin detección, ningún hallazgo y seis respuestas HTTP 200 válidas: `id=1` debe devolver
+un registro aceptado, y las otras cinco entradas deben rechazarse explícitamente
+sin devolver registros. El módulo corregido valida un entero positivo, usa
+consultas preparadas con `mysqli` y codifica la salida HTML.
+
+La evidencia disponible es HTTP. La opción de observabilidad eBPF presenta un
+siguiente paso del proyecto: el sensor figura como **no conectado** y no instala
+ni activa un sensor.
+
+## Análisis de una URL autorizada
+
+Selecciona **URL autorizada** e introduce una dirección HTTP o HTTPS de un
+objetivo para el que tengas permiso. Si contiene parámetros, el escáner los analiza directamente;
+si no encuentra candidatos, busca enlaces dentro del mismo origen.
+
+El recorrido está limitado a cinco páginas, profundidad uno, ocho candidatos y
+respuestas de hasta 1 MiB. El plan depende del valor del parámetro: tres solicitudes
+para texto y siete para valores numéricos. Un cambio de tamaño en la respuesta
+o un error HTTP no bastan para afirmar que existe inyección SQL.
+
+La dirección se consulta desde el contenedor del backend. `localhost` en esa
+dirección se refiere al propio contenedor. En Docker Desktop puedes usar
+`host.docker.internal` para llegar a un servicio autorizado en tu equipo,
+o el nombre de un servicio si comparte la red Docker.
+
+## Organización del código
+
+| Carpeta | Responsabilidad |
+| --- | --- |
+| [`backend/`](backend/) | API, validación del objetivo, motor, resultados y persistencia |
+| [`frontend/`](frontend/) | Formulario, seguimiento, consola y presentación de evidencia |
+| [`infrastructure/`](infrastructure/) | Esquema MySQL, inicialización de DVWA y módulo PHP corregido |
+
+El flujo principal es:
+
+```text
+Formulario → POST /api/scans → router → handler → validación del objetivo
+          → guardar escaneo → iniciar análisis en segundo plano
+          → devolver scan_id → consultar estado, eventos y resultados
+```
+
+| Método y ruta | Función |
+| --- | --- |
+| `POST /api/scans` | Crear el escaneo; responde HTTP 202 con su identificador |
+| `GET /api/scans/:id` | Consultar estado y fechas |
+| `GET /api/scans/:id/events` | Consultar actividad y evidencia |
+| `GET /api/scans/:id/results` | Consultar hallazgos y reporte |
+| `GET /health` | Comprobar backend y acceso a la base del escáner |
+
+`scanner-db` guarda escaneos, eventos y hallazgos en MySQL. `dvwa-db` es la base
+MariaDB del laboratorio. Conservan sus datos en volúmenes separados.
+
+Si una consulta del navegador falla, el frontend conserva el mismo identificador
+y la evidencia y reintenta con esperas de 1 a 10 segundos. Al reiniciar el backend,
+los escaneos antiguos que quedaron pendientes o ejecutándose se marcan como
+fallidos, conservando su evidencia. No se reanudan automáticamente. Este arranque
+está diseñado para una sola instancia del backend.
+
+## Comandos para el taller
+
+Desde la raíz del repositorio:
+
+```sh
+# Ver el estado, incluido el inicializador
+docker compose -f compose.yaml ps -a
+
+# Revisar los últimos mensajes del backend
+docker compose -f compose.yaml logs --tail=100 backend
+
+# Revisar la inicialización del laboratorio
+docker compose -f compose.yaml logs --tail=100 dvwa-init
+
+# Detener el entorno conservando los volúmenes de datos
+docker compose -f compose.yaml down
+
+# Volver a levantarlo
+docker compose -f compose.yaml up -d
+```
+
+`compose.yaml` es la configuración principal. `docker-compose.yml` la incluye
+como entrada de compatibilidad.
+
+Si Docker no puede conectarse al motor, abre Docker Desktop y espera a que termine
+de iniciar. Si un puerto está ocupado, cambia `FRONTEND_PORT`, `BACKEND_PORT` o
+`DVWA_PORT` en `.env`, repite el comando de arranque y abre la dirección con el
+nuevo puerto.
+
+## Desarrollo local
+
+Para trabajar en el frontend con Vite, levanta las dependencias y libera el puerto
+del frontend de Docker:
+
+```sh
+docker compose -f compose.yaml up -d --build backend
+docker compose -f compose.yaml stop frontend
+```
+
+Después, desde `frontend/`, con Node.js compatible con Vite 7 (20.19+ o 22.12+):
+
+```sh
+npm ci
+npm run dev
+```
+
+Vite utiliza el puerto 3000 y conecta con `http://127.0.0.1:8080`.
+`BACKEND_PROXY_URL` permite cambiar ese destino.
+
+Las comprobaciones internas del frontend se ejecutan con `npm test`, `npm run lint`
+y `npm run build`. En `backend/`, utiliza `go test ./...` con Go 1.25 o superior;
+la construcción Docker también ejecuta estas pruebas antes de compilar.
+
+Proyecto de laboratorio basado en [DVWA oficial](https://github.com/digininja/DVWA).
