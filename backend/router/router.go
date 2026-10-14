@@ -14,8 +14,6 @@ import (
 func SetupRouter(repo *database.Repository) *gin.Engine {
 	r := gin.Default()
 
-	// Only the local dashboard may use this API from a browser. A foreign
-	// Origin must be rejected before starting a scan, not just hidden by CORS.
 	origins := os.Getenv("SCANNER_ALLOWED_ORIGINS")
 	if origins == "" {
 		origins = "http://localhost:3000,http://127.0.0.1:3000"
